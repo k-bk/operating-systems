@@ -1,0 +1,160 @@
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 837.000000
+cpu_time: 817.000000
+cpu_time: 16.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 840.000000
+cpu_time: 821.000000
+cpu_time: 16.000000
+option: search_element allocation: 1
+total time: 1.000000
+cpu_time: 1.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 838.000000
+cpu_time: 819.000000
+cpu_time: 16.000000
+option: remove allocation: 1
+total time: 0.000000
+cpu_time: 0.000000
+cpu_time: 0.000000
+option: add allocation: 1
+total time: 3.000000
+cpu_time: 3.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 844.000000
+cpu_time: 825.000000
+cpu_time: 15.000000
+option: remove_and_add allocation: 1
+total time: 3.000000
+cpu_time: 3.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 940.000000
+cpu_time: 916.000000
+cpu_time: 19.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 952.000000
+cpu_time: 925.000000
+cpu_time: 21.000000
+option: search_element allocation: 0
+total time: 1.000000
+cpu_time: 1.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 917.000000
+cpu_time: 897.000000
+cpu_time: 16.000000
+option: remove allocation: 0
+total time: 0.000000
+cpu_time: 0.000000
+cpu_time: 0.000000
+option: add allocation: 0
+total time: 103.000000
+cpu_time: 101.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 912.000000
+cpu_time: 894.000000
+cpu_time: 15.000000
+option: remove_and_add allocation: 0
+total time: 63.000000
+cpu_time: 62.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 313.000000
+cpu_time: 305.000000
+cpu_time: 8.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 314.000000
+cpu_time: 305.000000
+cpu_time: 7.000000
+option: search_element allocation: 1
+total time: 0.000000
+cpu_time: 1.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 313.000000
+cpu_time: 305.000000
+cpu_time: 7.000000
+option: remove allocation: 1
+total time: 1.000000
+cpu_time: 0.000000
+cpu_time: 0.000000
+option: add allocation: 1
+total time: 1.000000
+cpu_time: 2.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 318.000000
+cpu_time: 309.000000
+cpu_time: 7.000000
+option: remove_and_add allocation: 1
+total time: 1.000000
+cpu_time: 1.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 389.000000
+cpu_time: 377.000000
+cpu_time: 10.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 399.000000
+cpu_time: 387.000000
+cpu_time: 10.000000
+option: search_element allocation: 0
+total time: 0.000000
+cpu_time: 0.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 394.000000
+cpu_time: 382.000000
+cpu_time: 11.000000
+option: remove allocation: 0
+total time: 0.000000
+cpu_time: 0.000000
+cpu_time: 0.000000
+option: add allocation: 0
+total time: 63.000000
+cpu_time: 62.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 389.000000
+cpu_time: 377.000000
+cpu_time: 10.000000
+option: remove_and_add allocation: 0
+total time: 38.000000
+cpu_time: 38.000000
+cpu_time: 0.000000

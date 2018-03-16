@@ -1,0 +1,252 @@
+Przy takich danych wejsciowych i takiej maszynie trudno zauwazyc 
+wieksze roznice pomiedzy wynikami optymalizacji.
+------------------------------------------
+OPTIMIZATION 0
+
+option: create_table allocation: 1
+total time: 835.000000    
+cpu_time: 815.000000
+cpu_time: 17.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 832.000000
+cpu_time: 809.000000
+cpu_time: 18.000000
+option: remove allocation: 1
+total time: 0.000000
+cpu_time: 1.000000
+cpu_time: 0.000000
+option: add allocation: 1
+total time: 3.000000
+cpu_time: 2.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 848.000000
+cpu_time: 828.000000
+cpu_time: 17.000000
+option: remove_and_add allocation: 1
+total time: 3.000000
+cpu_time: 3.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 915.000000
+cpu_time: 896.000000
+cpu_time: 16.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 911.000000
+cpu_time: 892.000000
+cpu_time: 15.000000
+option: remove allocation: 0
+total time: 0.000000
+cpu_time: 0.000000
+cpu_time: 0.000000
+option: add allocation: 0
+total time: 103.000000
+cpu_time: 102.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 966.000000
+cpu_time: 942.000000
+cpu_time: 19.000000
+option: remove_and_add allocation: 0
+total time: 64.000000
+cpu_time: 63.000000
+cpu_time: 1.000000
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+OPTIMIZATION 1
+
+option: create_table allocation: 1
+total time: 786.000000
+cpu_time: 767.000000
+cpu_time: 16.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 781.000000
+cpu_time: 761.000000
+cpu_time: 17.000000
+option: remove allocation: 1
+total time: 0.000000
+cpu_time: 0.000000
+cpu_time: 0.000000
+option: add allocation: 1
+total time: 2.000000
+cpu_time: 2.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 780.000000
+cpu_time: 760.000000
+cpu_time: 16.000000
+option: remove_and_add allocation: 1
+total time: 2.000000
+cpu_time: 3.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 802.000000
+cpu_time: 784.000000
+cpu_time: 16.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 820.000000
+cpu_time: 799.000000
+cpu_time: 17.000000
+option: remove allocation: 0
+total time: 0.000000
+cpu_time: 0.000000
+cpu_time: 0.000000
+option: add allocation: 0
+total time: 31.000000
+cpu_time: 30.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 827.000000
+cpu_time: 809.000000
+cpu_time: 14.000000
+option: remove_and_add allocation: 0
+total time: 19.000000
+cpu_time: 19.000000
+cpu_time: 0.000000
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+OPTIMIZATION 2
+
+option: create_table allocation: 1
+total time: 829.000000
+cpu_time: 810.000000
+cpu_time: 16.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 828.000000
+cpu_time: 807.000000
+cpu_time: 18.000000
+option: remove allocation: 1
+total time: 0.000000
+cpu_time: 0.000000
+cpu_time: 0.000000
+option: add allocation: 1
+total time: 3.000000
+cpu_time: 3.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 828.000000
+cpu_time: 809.000000
+cpu_time: 16.000000
+option: remove_and_add allocation: 1
+total time: 2.000000
+cpu_time: 2.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 854.000000
+cpu_time: 837.000000
+cpu_time: 14.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 903.000000
+cpu_time: 880.000000
+cpu_time: 18.000000
+option: remove allocation: 0
+total time: 0.000000
+cpu_time: 0.000000
+cpu_time: 0.000000
+option: add allocation: 0
+total time: 38.000000
+cpu_time: 38.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 868.000000
+cpu_time: 846.000000
+cpu_time: 17.000000
+option: remove_and_add allocation: 0
+total time: 23.000000
+cpu_time: 23.000000
+cpu_time: 0.000000
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+OPTIMIZATION 3
+
+option: create_table allocation: 1
+total time: 829.000000
+cpu_time: 810.000000
+cpu_time: 15.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 888.000000
+cpu_time: 865.000000
+cpu_time: 19.000000
+option: remove allocation: 1
+total time: 0.000000
+cpu_time: 0.000000
+cpu_time: 0.000000
+option: add allocation: 1
+total time: 3.000000
+cpu_time: 2.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 1
+total time: 908.000000
+cpu_time: 880.000000
+cpu_time: 22.000000
+option: remove_and_add allocation: 1
+total time: 3.000000
+cpu_time: 3.000000
+cpu_time: 1.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 954.000000
+cpu_time: 925.000000
+cpu_time: 22.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 907.000000
+cpu_time: 883.000000
+cpu_time: 18.000000
+option: remove allocation: 0
+total time: 0.000000
+cpu_time: 0.000000
+cpu_time: 0.000000
+option: add allocation: 0
+total time: 40.000000
+cpu_time: 40.000000
+cpu_time: 0.000000
+------------------------------------------
+
+option: create_table allocation: 0
+total time: 928.000000
+cpu_time: 901.000000
+cpu_time: 21.000000
+option: remove_and_add allocation: 0
+total time: 30.000000
+cpu_time: 29.000000
+cpu_time: 0.000000

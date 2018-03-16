@@ -25,4 +25,4 @@ extern char* search_element (Array* array, int index);
 
 extern void print_array (Array* array);
 
-#endif
+#endif //ARRAY_MANAGER_H
