@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 #include "iocmp.h"
 
 char outprint[1000000] = {0};
@@ -52,15 +53,12 @@ int generate (RecordFile recordFile) {
     fclose (resultFile);
 
     // testing the compare funciton
-    sort (recordFile);
-    print(recordFile);
     return 0;
 }
 
 void print (RecordFile recordFile) {
     FILE *file = fopen (recordFile.name, "r");
     if (file) {
-	fseek (file, 0, 0);
 	fread (outprint, 1, 100000, file);
 	printf ("%s", outprint);
     }
@@ -106,6 +104,20 @@ int sort (RecordFile recordFile) {
     return 0;
 }
 
-int copy (RecordFile file1, RecordFile file2) {
+int copy (RecordFile recordFile1, RecordFile recordFile2, int linesToCopy) {
+    FILE *file1 = fopen (recordFile1.name, "r");
+    FILE *file2 = fopen (recordFile2.name, "a");
+    assert (file1 && file2);
+    assert (recordFile1.size == recordFile2.size);
+
+    unsigned long bufferSize = recordFile1.size + 1;
+    char buffer[recordFile1.size + 1];
+    
+    for (int i = 0; i < linesToCopy; i++) {
+	fread (buffer, bufferSize, 1, file1);
+	fwrite (buffer, bufferSize + 1, 1, file2);
+    }	    
+    fclose (file1);
+    fclose (file2);
     return 0;
 }
