@@ -10,4 +10,4 @@ iocmp.o: iocmp.c iocmp.h
 	gcc $(CFLAGS) -c iocmp.c
 
 clean: 
-	rm -f *.o *.so *.a
+	rm -f *.o *.so *.a test

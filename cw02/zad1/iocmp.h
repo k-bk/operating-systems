@@ -1,10 +1,19 @@
 #ifndef IOCMP_H
 #define IOCMP_H
 
-extern int generate (const char *name, int recordSize, int recordCount);
-extern int sort (const char *name, int recordSize);
-extern int copy (const char *name1, const char *name2, int recordSize);
-extern int compare (const char *name, int recordSize, int i, int j);
+typedef struct RecordFile {
+    const char *name;
+    int size;
+    int count;
+} RecordFile;
+
+extern RecordFile newRecordFile (const char *name, int size, int count);
+extern int generate (RecordFile recordFile);
+extern int sort (RecordFile recordFile);
+extern int copy (RecordFile recordFile1, RecordFile recordFile2);
+int compare (RecordFile recordFile, int i, int j);
+void swap (RecordFile recordFile, int i, int j);
+void print (RecordFile recordFile);
 
 #endif //IOCMP_H
 

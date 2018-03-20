@@ -6,6 +6,7 @@
 int main () {
     srand (time (NULL));
     const char *name = "nicefile.txt";
-    generate (name, 8, 10);
+    RecordFile recordFile = newRecordFile (name, 8, 10);
+    generate (recordFile);
     return 0;
 }
