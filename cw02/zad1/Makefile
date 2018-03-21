@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -std=c99 -ggdb
 
 test: main.o lib_iocmp.o
-	$(CC) $(CFLAGS) -o test
+	$(CC) $(CFLAGS) -o test lib_iocmp.o main.o
 
 main.o: main.c lib_iocmp.h
 	$(CC) $(CFLAGS) -c main.c
