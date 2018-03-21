@@ -1,9 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "iocmp.h"
 
-char outprint[1000000] = {0};
+int sys = 0;
 
 RecordFile newRecordFile (const char *name, int size, int count) {
    RecordFile file; 
@@ -13,13 +17,21 @@ RecordFile newRecordFile (const char *name, int size, int count) {
    return file;
 }
 
+char outprint[1000000] = {0};
+
 int generate (RecordFile recordFile) {
-    FILE *randomFile = fopen ("/dev/random", "r");
-    FILE *resultFile = fopen (recordFile.name, "w");
-    if (randomFile == NULL || resultFile == NULL) {
-	perror ("Error while opening the file.");
-	return -1;
+
+	int randomFile = open ("/dev/random", O_RDONLY);
+	int resultFile = open (recordFile.name, O_WRONLY | O_CREAT);
+	assert (randomFile >= 0 && resultFile >= 0);
+
+	FILE *randomFile = fopen ("/dev/random", "r");
+	FILE *resultFile = fopen (recordFile.name, "w");
+	if (randomFile == NULL || resultFile == NULL) {
+		perror ("Error while opening the file.");
+		return -1;
     }
+
     
     /*
     CONTENT GENERATION THAT USES /dev/random
@@ -43,38 +55,55 @@ int generate (RecordFile recordFile) {
     int size = recordFile.count * (recordFile.size + 1);
     char out[recordFile.count][recordFile.size + 1];
     for (int i = 0; i < recordFile.count; i++) {
-	for (int j = 0; j <= recordFile.size; j++) {
-	    out[i][j] = rand() % 26 + 65;
-	}
-	out[i][recordFile.size] = '\n';
+		for (int j = 0; j <= recordFile.size; j++) {
+			out[i][j] = rand() % 26 + 65;
+		}
+		out[i][recordFile.size] = '\n';
     }
-    fwrite (out, 1, size, resultFile);
-    fclose (randomFile);
-    fclose (resultFile);
 
-    // testing the compare funciton
+	if (sys) {
+		write (resultFile, out, size);
+		close (randomFile);
+		close (resultFile);
+	} else {
+		fwrite (out, 1, size, resultFile);
+		fclose (randomFile);
+		fclose (resultFile);
+	}
     return 0;
 }
 
 void print (RecordFile recordFile) {
     FILE *file = fopen (recordFile.name, "r");
     if (file) {
-	fread (outprint, 1, 100000, file);
-	printf ("%s", outprint);
+		fread (outprint, 1, 100000, file);
+		printf ("%s", outprint);
     }
     fclose (file);
 }
 
 int compare (RecordFile recordFile, int i, int j) {
-    FILE *file = fopen (recordFile.name, "r");
     char iVal[1];
     char jVal[1];
-    fseek (file, i * (recordFile.size + 1), 0);
-    fread (iVal, sizeof(char), 1, file);
-    fseek (file, j * (recordFile.size + 1), 0);
-    fread (jVal, sizeof(char), 1, file);
-    //printf ("compare: i=%d j=%d \n iVal=%d %c jVal=%d %c cmp=%d \n", i, j, iVal[0], iVal[0], jVal[0], jVal[0], jVal[0] - iVal[0]);
-    fclose (file);
+	if (sys) {
+		int file = open (recordFile.name, O_RDWR);
+		lseek (file, i * (recordFile.size + 1), SEEK_SET);
+		read (file, iRecord, sizeof(char) * recordFile.size);
+		lseek (file, j * (recordFile.size + 1), SEEK_SET);
+		read (file, jRecord, sizeof(char) * recordFile.size);
+		lseek (file, i * (recordFile.size + 1), SEEK_SET);
+		write (file, jRecord, recordFile.size);
+		lseek (file, j * (recordFile.size + 1), SEEK_SET);
+		write (file, iRecord, recordFile.size);
+		close (file);
+	} else {
+		FILE *file = fopen (recordFile.name, "r");
+		fseek (file, i * (recordFile.size + 1), 0);
+		fread (iVal, sizeof(char), 1, file);
+		fseek (file, j * (recordFile.size + 1), 0);
+		fread (jVal, sizeof(char), 1, file);
+		fclose (file);
+	}
     return jVal[0] - iVal[0];
 }
 

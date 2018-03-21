@@ -1,21 +1,29 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "iocmp.h"
+//#include "iocmp.h"
 #include <time.h>
 
-int main () {
+const char* progName;
+
+void showHelp () {
+    printf ("Use %s function [args]", progName);
+}
+
+int main (int argc, char* argv[]) {
+
     srand (time (NULL));
-    const char *name = "nicefile.txt";
-    const char *name2 = "better.txt";
-    RecordFile recordFile = newRecordFile (name, 8, 10);
-    RecordFile recordFile2 = newRecordFile (name2, 8, 5);
-    generate (recordFile);
-    sort (recordFile);
-    generate (recordFile2);
-    sort (recordFile);
-    print (recordFile2);
-    printf ("\n");
-    copy (recordFile, recordFile2, 4);
-    print (recordFile2);
+    progName = argv[0];
+
+    int opt = 1;
+    if (strcmp (argv[opt], "generate") == 0) {
+
+    } else if (strcmp (argv[opt], "sort") == 0) {
+
+    } else if (strcmp (argv[opt], "copy") == 0) {
+
+    } else {
+	showHelp();
+    }
+
     return 0;
 }

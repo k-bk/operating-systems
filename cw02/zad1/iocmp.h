@@ -13,7 +13,12 @@ extern int sort (RecordFile recordFile);
 extern int copy (RecordFile recordFile1, RecordFile recordFile2, int linesToCopy);
 int compare (RecordFile recordFile, int i, int j);
 void swap (RecordFile recordFile, int i, int j);
-void print (RecordFile recordFile);
+extern void print (RecordFile recordFile);
+extern int sys_generate (RecordFile recordFile);
+extern int sys_sort (RecordFile recordFile);
+extern int sys_copy (RecordFile recordFile1, RecordFile recordFile2, int linesToCopy);
+int sys_compare (RecordFile recordFile, int i, int j);
+void sys_swap (RecordFile recordFile, int i, int j);
 
 #endif //IOCMP_H
 

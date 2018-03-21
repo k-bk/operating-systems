@@ -1,13 +1,14 @@
+CC = gcc
 CFLAGS = -Wall -std=c99 -ggdb
 
 test: main.o iocmp.o
-	gcc $(CFLAGS) -o test main.o iocmp.o
+	$(CC) $(CFLAGS) -o test
 
 main.o: main.c iocmp.h
-	gcc $(CFLAGS) -c main.c
+	$(CC) $(CFLAGS) -c main.c
 
-iocmp.o: iocmp.c iocmp.h
-	gcc $(CFLAGS) -c iocmp.c
+iocmp.o: iocmp.c sys_iocmp.c iocmp.h
+	$(CC) $(CFLAGS) -c iocmp.c
 
 clean: 
 	rm -f *.o *.so *.a test
