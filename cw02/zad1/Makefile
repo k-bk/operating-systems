@@ -1,14 +1,13 @@
 CC = gcc
-CFLAGS = -Wall -std=c99 -ggdb
+CFLAGS = -Wall -std=c99 -ggdb -I.
+DEPS = lib_iocmp.h sys_iocmp.h
+OBJ = sys_iocmp.o lib_iocmp.o main.o
 
-test: main.o lib_iocmp.o
-	$(CC) $(CFLAGS) -o test lib_iocmp.o main.o
+%.o: %.c $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
 
-main.o: main.c lib_iocmp.h
-	$(CC) $(CFLAGS) -c main.c
-
-iocmp.o: lib_iocmp.c lib_iocmp.h
-	$(CC) $(CFLAGS) -c lib_iocmp.c
+test: $(OBJ)
+	$(CC) -o $@ $^ $(CFLAGS)
 
 clean: 
 	rm -f *.o *.so *.a test

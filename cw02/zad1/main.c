@@ -2,12 +2,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include "lib_iocmp.h"
+#include "sys_iocmp.h"
 #include <time.h>
 
 const char* progName;
 
 void showHelp () {
-    printf ("Use %s function [args]\n", progName);
+    printf ("Use %s <function> [args]\n"
+	    "generate [name] [count] [regsize] [lib/sys]\n"
+	    "sort     [name] [count] [regsize] [lib/sys]\n"
+	    "copy     [name1] [name2] [count] [regsize] [lib/sys]\n"
+	    , progName);
 }
 
 int main (int argc, char* argv[]) {
@@ -20,11 +25,11 @@ int main (int argc, char* argv[]) {
 	    char *name = argv[2];
 	    int count = atoi (argv[3]);
 	    int size = atoi (argv[4]);
-	    RecordFile recordFile = newRecordFile (name, count, size);
+	    RecordFile recordFile = newRecordFile (name, size, count);
 
 	    char *mode = argv[5];
 	    if (strcmp (mode, "sys") == 0) {
-		//sys_generate (recordFile);
+		sys_generate (recordFile);
 	    } else {
 		lib_generate (recordFile);
 	    }
@@ -32,11 +37,11 @@ int main (int argc, char* argv[]) {
 	    char *name = argv[2];
 	    int count = atoi (argv[3]);
 	    int size = atoi (argv[4]);
-	    RecordFile recordFile = newRecordFile (name, count, size);
+	    RecordFile recordFile = newRecordFile (name, size, count);
 
 	    char *mode = argv[5];
 	    if (strcmp (mode, "sys") == 0) {
-		//sys_sort (recordFile);
+		sys_sort (recordFile);
 	    } else {
 		lib_sort (recordFile);
 	    }
@@ -48,7 +53,7 @@ int main (int argc, char* argv[]) {
 
 	    char *mode = argv[6];
 	    if (strcmp (mode, "sys") == 0) {
-		//sys_copy (recordFile1, recordFile2, size);
+		sys_copy (name1, name2, linesToCopy, bufferSize);
 	    } else {
 		lib_copy (name1, name2, linesToCopy, bufferSize);
 	    }

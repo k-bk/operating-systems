@@ -7,7 +7,7 @@ typedef struct RecordFile {
     int size;
     int count;
     FILE *file;
-    int *fd;
+    int fd;
 } RecordFile;
 
 extern RecordFile newRecordFile (const char *name, int size, int count);
