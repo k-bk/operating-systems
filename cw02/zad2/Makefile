@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -std=c99 -ggdb -I.
+CFLAGS = -Wall -std=gnu99 -I.
 DEPS = 
 OBJ = main.o
 
