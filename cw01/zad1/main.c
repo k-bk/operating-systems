@@ -51,6 +51,8 @@ int main (int argc, char* argv[]) {
 
     clock_t start, end;
 
+    struct tms start1, end1;
+
     while (argument < argc) {
 	char* option = argv[argument];
 
@@ -61,6 +63,8 @@ int main (int argc, char* argv[]) {
 	    int block = atoi (argv[argument]);
 
 	    start = clock();
+	    times (&start1);
+	    
 	    create_array (test, size, block, is_static);
 	    for (int i = 0; i < size; i++) {
 		char* contents = (char*) malloc (size * sizeof(char));
@@ -68,6 +72,7 @@ int main (int argc, char* argv[]) {
 		create_block (test, i, contents);
 	    }
 	    end = clock();
+	    times (&end1);
 
 	} else if (strcmp (option, "search_element") == 0) {
 	    argument++;
@@ -81,28 +86,34 @@ int main (int argc, char* argv[]) {
 	    int number = atoi (argv[argument]);
 
 	    start = clock();
+	    times (&start1);
+
 	    for (int i = 0; i < number; i++) {
 		delete_block (test, test->block_count - 1);
 	    }
 	    end = clock();
+	    times (&end1);
 
 	} else if (strcmp (option, "add") == 0) {
 	    argument++;
 	    int number = atoi (argv[argument]);
 
 	    start = clock();
+	    times (&start1);
 	    for (int i = 0; i < number; i++) {
 		char* contents = (char*) malloc (test->block_size * sizeof(char));
 		contents = random_contents(contents, test->block_size);
 		create_block (test, test->block_count, contents);
 	    }
 	    end = clock();
+	    times (&end1);
 
 	} else if (strcmp (option, "remove_and_add") == 0) {
 	    argument++;
 	    int number = atoi (argv[argument]);
 
 	    start = clock();
+	    times (&start1);
 	    for (int i = 1; i <= number; i++) {
 		delete_block (test, test->block_count - i);
 		char* contents = (char*) malloc (test->block_size * sizeof(char));
@@ -110,9 +121,17 @@ int main (int argc, char* argv[]) {
 		create_block (test, test->block_count - i, contents);
 	    }
 	    end = clock();
+	    times (&end1);
 	} 
 
-	printf ("option: %s \ncpu_time: %f\n", option, calculate_time (start, end));
+	printf ("option: %s \nreal:  %f\n"
+		"             utime: %f\n"
+		"             stime: %f\n"
+		, option
+		, calculate_time (start, end)
+		, calculate_time (start1.tms_utime, end1.tms_utime)
+		, calculate_time (start1.tms_stime, end1.tms_utime)
+		);
 	argument++;
     }
     return 0;

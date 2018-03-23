@@ -3,12 +3,12 @@ CFLAGS = -Wall -std=gnu99 -I.
 DEPS = 
 OBJ = main.o
 
-all: zad2 testdirs
+all: program testdirs
 
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-zad2: $(OBJ)
+program: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS)
 
 testdirs:
@@ -19,4 +19,4 @@ testdirs:
 	ln -s dir1/dir2/text3/ dir1/link1
 
 clean: 
-	rm -rf *.o *.so *.a zad2 dir1 textFile
+	rm -rf *.o *.so *.a program dir1 textFile
