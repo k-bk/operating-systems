@@ -66,11 +66,6 @@ void stat_searchDir (char *path) {
 	    if (S_ISDIR (buf.st_mode)) {
 		stat_searchDir (newPath);
 	    } else {
-		printf ("%s\n", newPath);
-		strmode (buf.st_mode, mode);
-		printf ("Total size, in bytes: %lu\n", buf.st_size);
-		printf ("Mode: %s \n", mode);
-		printf ("Last file modification: %s", ctime(&buf.st_mtime));
 		int isDisplayed = 0;
 		int timediff = timeInSec - buf.st_mtime;
 		if (cmp == BEFORE) 
@@ -79,7 +74,13 @@ void stat_searchDir (char *path) {
 		    isDisplayed = timediff < 0;
 		else if (cmp == SAME_DAY)
 		    isDisplayed = timediff < 60*60*24 && timediff > 0;
-		printf ("Is displayed = %d\n\n", isDisplayed);
+		if (isDisplayed) {
+		    printf ("%s\n", newPath);
+		    strmode (buf.st_mode, mode);
+		    printf ("Total size, in bytes: %lu\n", buf.st_size);
+		    printf ("Mode: %s \n", mode);
+		    printf ("Last file modification: %s\n", ctime(&buf.st_mtime));
+		}
 	    }
 	}
     }
@@ -108,11 +109,6 @@ static int nftwFunction(const char *fpath,
 	struct FTW *ftwbuf
 ) {
     if (flag == FTW_F) {
-	printf ("%s\n", fpath);
-	strmode (fstat->st_mode, mode);
-	printf ("Total size, in bytes: %lu\n", fstat->st_size);
-	printf ("Mode: %s \n", mode);
-	printf ("Last file modification: %s", ctime(&buf.st_mtime));
 	int isDisplayed = 0;
 	int timediff = timeInSec - fstat->st_mtime;
 	if (cmp == BEFORE) 
@@ -121,7 +117,13 @@ static int nftwFunction(const char *fpath,
 	    isDisplayed = timediff < 0;
 	else if (cmp == SAME_DAY)
 	    isDisplayed = timediff < 60*60*24 && timediff > 0;
-	printf ("Is displayed = %d\n\n", isDisplayed);
+	if (isDisplayed) {
+	printf ("%s\n", fpath);
+	strmode (fstat->st_mode, mode);
+	printf ("Total size, in bytes: %lu\n", fstat->st_size);
+	printf ("Mode: %s \n", mode);
+	printf ("Last file modification: %s\n", ctime(&buf.st_mtime));
+	}
     }
     return 0;
 }
