@@ -2,6 +2,9 @@
 // Karol Bak
 //
 
+#define _XOPEN_SOURCE 500
+#define NFTW_MAXOPEN_DESC 100
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,8 +16,6 @@
 #include <sys/stat.h>
 #include <linux/limits.h>
 #include <ftw.h>
-
-#define NFTW_MAXOPEN_DESC 100
 
 typedef enum {
     BEFORE, AFTER, SAME_DAY
@@ -28,12 +29,12 @@ date_cmp cmp;
 
 void showHelp () {
     printf ("Use %s <path> [compare] [Month] [Day] \n"
-	    " path – program path \n"
-	    " compare – < or > or = \n"
-	    " Month – Mar\n"
-	    " Day – 22\n\n"
-	    "Example: %s ~/Documents/ > Mar 22\n"
-	    , progName, progName);
+        " path – program path \n"
+        " compare – < or > or = \n"
+        " Month – Mar\n"
+        " Day – 22\n\n"
+        "Example: %s ~/Documents/ > Mar 22\n"
+        , progName, progName);
     exit (0);
 }
 
@@ -49,40 +50,47 @@ void stat_searchDir (char *path) {
     DIR *dp = opendir (path);
     struct dirent *dirp = readdir (dp);
     if (dp == NULL) {
-	printf ("Error when opening the %s\n", path);
-	return;
+        fprintf (stderr, "Error when opening the %s\n", path);
+        exit(EXIT_FAILURE);
     }
 
     printf ("I am startig search at : \n%s\n", path);
     char newPath[PATH_MAX];
     while ((dirp = readdir(dp)) != NULL) {
-	strcpy (newPath, path);
-	strcat (newPath, "/");
-	strcat (newPath, dirp->d_name);
+        strcpy (newPath, path);
+        strcat (newPath, "/");
+        strcat (newPath, dirp->d_name);
 
-	if (strcmp (dirp->d_name, ".") == 0 || strcmp (dirp->d_name, "..") == 0)
-	    continue;
-	if ((lstat (dirp->d_name, &buf)) == 0) {
-	    if (S_ISDIR (buf.st_mode)) {
-		stat_searchDir (newPath);
-	    } else {
-		int isDisplayed = 0;
-		int timediff = timeInSec - buf.st_mtime;
-		if (cmp == BEFORE) 
-		    isDisplayed = timediff > 60*60*24;
-		else if (cmp == AFTER)
-		    isDisplayed = timediff < 0;
-		else if (cmp == SAME_DAY)
-		    isDisplayed = timediff < 60*60*24 && timediff > 0;
-		if (isDisplayed) {
-		    printf ("%s\n", newPath);
-		    strmode (buf.st_mode, mode);
-		    printf ("Total size, in bytes: %lu\n", buf.st_size);
-		    printf ("Mode: %s \n", mode);
-		    printf ("Last file modification: %s\n", ctime(&buf.st_mtime));
-		}
-	    }
-	}
+        if (strcmp (dirp->d_name, ".") == 0 || strcmp (dirp->d_name, "..") == 0)
+            continue;
+        if ((lstat (dirp->d_name, &buf)) == 0) {
+            if (S_ISDIR (buf.st_mode)) {
+                int child_pid = fork();
+                if (child_pid == -1) {
+                    fprintf(stderr, "fork error");
+                    exit(EXIT_FAILURE);
+                }
+
+                if (child_pid == 0)
+                    stat_searchDir (newPath);
+            } else {
+                int isDisplayed = 0;
+                int timediff = timeInSec - buf.st_mtime;
+                if (cmp == BEFORE) 
+                    isDisplayed = timediff > 60*60*24;
+                else if (cmp == AFTER)
+                    isDisplayed = timediff < 0;
+                else if (cmp == SAME_DAY)
+                    isDisplayed = timediff < 60*60*24 && timediff > 0;
+                if (isDisplayed) {
+                    printf ("%s\n", newPath);
+                    strmode (buf.st_mode, mode);
+                    printf ("Total size, in bytes: %lu\n", buf.st_size);
+                    printf ("Mode: %s \n", mode);
+                    printf ("Last file modification: %s\n", ctime(&buf.st_mtime));
+                }
+            }
+        }
     }
     closedir (dp);
 }
@@ -104,31 +112,26 @@ int intmonth (char *month) {
 }
 
 static int nftwFunction(const char *fpath, 
-	const struct stat *fstat, 
-	int flag, 
-	struct FTW *ftwbuf
+    const struct stat *fstat, 
+    int flag, 
+    struct FTW *ftwbuf
 ) {
-    if (flag == FTW_D) {
-	fork ();
-	return 0;
-    } else if (flag == FTW_F) {
-	int isDisplayed = 0;
-	int timediff = timeInSec - fstat->st_mtime;
-	if (cmp == BEFORE) 
-	    isDisplayed = timediff > 60*60*24;
-	else if (cmp == AFTER)
-	    isDisplayed = timediff < 0;
-	else if (cmp == SAME_DAY)
-	    isDisplayed = timediff < 60*60*24 && timediff > 0;
-	if (isDisplayed) {
-	printf ("%s\n", fpath);
-	/*
-	strmode (fstat->st_mode, mode);
-	printf ("Total size, in bytes: %lu\n", fstat->st_size);
-	printf ("Mode: %s \n", mode);
-	printf ("Last file modification: %s\n", ctime(&buf.st_mtime));
-	*/
-	}
+    if (flag == FTW_F) {
+        int isDisplayed = 0;
+        int timediff = timeInSec - fstat->st_mtime;
+        if (cmp == BEFORE) 
+            isDisplayed = timediff > 60*60*24;
+        else if (cmp == AFTER)
+            isDisplayed = timediff < 0;
+        else if (cmp == SAME_DAY)
+            isDisplayed = timediff < 60*60*24 && timediff > 0;
+        if (isDisplayed) {
+            printf ("%s\n", fpath);
+            strmode (fstat->st_mode, mode);
+            printf ("Total size, in bytes: %lu\n", fstat->st_size);
+            printf ("Mode: %s \n", mode);
+            printf ("Last file modification: %s\n", ctime(&buf.st_mtime));
+        }
     }
     return 0;
 }
@@ -139,15 +142,15 @@ int main (int argc, char* argv[]) {
     srand (time (NULL));
     progName = argv[0];
     if (argc != 5) 
-	showHelp();
+    showHelp();
 
 
     if (strcmp (argv[2], "<") == 0) 
-	cmp = BEFORE;
+        cmp = BEFORE;
     else if (strcmp (argv[2], ">") == 0)
-	cmp = AFTER;
+        cmp = AFTER;
     else if (strcmp (argv[2], "=") == 0)
-	cmp = SAME_DAY;
+        cmp = SAME_DAY;
 
     char *month = argv[3];
     int day = atoi (argv[4]);
@@ -162,19 +165,17 @@ int main (int argc, char* argv[]) {
     timeInSec = mktime (&givenTime);
 
     char absPath[PATH_MAX];
-    /*
     realpath (argv[1], absPath);
     // SEARCHING WITH NORMAL FUNCTIONS
     printf ("----------------------\n"
-	    "---- NORMAL ----------\n"
-	    "----------------------\n\n");
+            "---- NORMAL ----------\n"
+            "----------------------\n\n");
     stat_searchDir (absPath);
-    */
 
     realpath (argv[1], absPath);
     printf ("----------------------\n"
-	    "---- FTW -------------\n"
-	    "----------------------\n\n");
+            "---- FTW -------------\n"
+            "----------------------\n\n");
     //nftw (absPath, nftwFunction, NFTW_MAXOPEN_DESC, FTW_PHYS);
     nftw (absPath, nftwFunction, NFTW_MAXOPEN_DESC, 0);
 
