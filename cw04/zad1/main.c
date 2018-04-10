@@ -22,33 +22,7 @@ void run () {
     }
 }
 
-void use_SIGTSTP (int signum) {
-    show_date = !show_date;
-    if (!show_date) {
-        printf("\n Waiting for CTRL+Z – continue or CTRL+C – end program\n");
-    }
-#ifdef BASH
-    printf("bash");
-    kill(child_pid, SIGSTOP);
-#endif
-
-#ifdef BASH
-    printf("bash");
-    bash_run();
-#endif
-}
-
-void use_SIGINT (int signum) {
-    printf("\n");
-#ifdef BASH
-    printf("bash");
-    kill(child_pid, SIGSTOP);
-#endif
-    exit(EXIT_SUCCESS);
-}
-
 void bash_run () {
-    printf("bash");
     child_pid = fork();
     if (child_pid == -1) {
         perror("Cannot make a fork");
@@ -58,7 +32,26 @@ void bash_run () {
         execlp("./date_loop.sh", "date_loop.sh", NULL);
         exit(EXIT_SUCCESS);
     }
-    pause();
+}
+
+void use_SIGTSTP (int signum) {
+    show_date = !show_date;
+    if (!show_date) {
+        printf("\n Waiting for CTRL+Z – continue or CTRL+C – end program\n");
+#ifdef BASH
+        kill(child_pid, SIGSTOP);
+    } else {
+        bash_run();
+#endif
+    }
+}
+
+void use_SIGINT (int signum) {
+    printf("\n");
+#ifdef BASH
+    kill(child_pid, SIGSTOP);
+#endif
+    exit(EXIT_SUCCESS);
 }
 
 int main () {
@@ -69,13 +62,10 @@ int main () {
     sigaction(SIGINT, &act, NULL);
     signal(SIGTSTP, use_SIGTSTP);
 #ifdef BASH
-    printf("bash");
     bash_run();
 #else
     run();
 #endif
-    while (1) {
-        pause();
-    }
+    while (1) pause();
     return EXIT_SUCCESS;
 }
