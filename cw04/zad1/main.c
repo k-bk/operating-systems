@@ -1,45 +1,81 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <signal.h>
+#include <sys/types.h>
 #include <unistd.h>
+#include <signal.h>
 
-void time_loop () {
+void use_SIGINT (int);
+void use_SIGTSTP (int);
+
+int show_date = 1;
+int child_pid;
+
+void run () {
     time_t current_time;
     while (1) {
-	time(&current_time);
-	printf("%s", ctime(&current_time));
-	sleep(1);
+        if (show_date) {
+            time(&current_time);
+            printf("%s", ctime(&current_time));
+        }
+        sleep(1);
     }
 }
 
-void use_SIGTSTP () {
-    printf("Waiting for CTRL+Z – continue or CTRL+C – end program\n");
-    signal(SIGTSTP, time_loop);
-    while (1) {
-	sleep(1);
+void use_SIGTSTP (int signum) {
+    show_date = !show_date;
+    if (!show_date) {
+        printf("\n Waiting for CTRL+Z – continue or CTRL+C – end program\n");
     }
+#ifdef BASH
+    printf("bash");
+    kill(child_pid, SIGSTOP);
+#endif
+
+#ifdef BASH
+    printf("bash");
+    bash_run();
+#endif
 }
 
 void use_SIGINT (int signum) {
-    printf("Recieved SIGINT signal\n");
+    printf("\n");
+#ifdef BASH
+    printf("bash");
+    kill(child_pid, SIGSTOP);
+#endif
     exit(EXIT_SUCCESS);
 }
 
-void use_SIGCONT () {
-    printf("Recieved SIGCONT, working again.\n");
-    time_loop();
+void bash_run () {
+    printf("bash");
+    child_pid = fork();
+    if (child_pid == -1) {
+        perror("Cannot make a fork");
+        exit(EXIT_FAILURE);
+    } 
+    if (child_pid == 0) {
+        execlp("./date_loop.sh", "date_loop.sh", NULL);
+        exit(EXIT_SUCCESS);
+    }
+    pause();
 }
 
 int main () {
     struct sigaction act;
-    act.sa_handler = use_SIGTSTP;
-    act.sa_mask = SIGINT;
+    act.sa_handler = use_SIGINT;
     act.sa_flags = 0;
-
-    sigaction(SIGTSTP, &act, NULL);
-    signal(SIGINT, use_SIGINT);
-    signal(SIGCONT, use_SIGCONT);
-    time_loop();
+    sigemptyset(&act.sa_mask);
+    sigaction(SIGINT, &act, NULL);
+    signal(SIGTSTP, use_SIGTSTP);
+#ifdef BASH
+    printf("bash");
+    bash_run();
+#else
+    run();
+#endif
+    while (1) {
+        pause();
+    }
     return EXIT_SUCCESS;
 }
