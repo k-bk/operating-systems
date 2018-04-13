@@ -18,6 +18,8 @@ int child_end = 0;
 int parent_sent = 0;
 int parent_recieved = 0;
 int parent_end = 0;
+static int signal1;
+static int signal2;
 
 void show_help () {
     printf("Usage: %s <Num of signals> <Type>\n"
@@ -29,11 +31,11 @@ void show_help () {
 }
 
 void set_signal(int signum, void* handler) {
-    struct sigaction act_SIGUSR1;
-    act_SIGUSR1.sa_handler = handler;
-    sigfillset(&act_SIGUSR1.sa_mask);
-    act_SIGUSR1.sa_flags = 0;
-    sigaction(signum, &act_SIGUSR1, NULL);
+    struct sigaction act;
+    act.sa_handler = handler;
+    sigfillset(&act.sa_mask);
+    act.sa_flags = 0;
+    sigaction(signum, &act, NULL);
 }
 
 void child_exit() {
@@ -46,7 +48,7 @@ void child_exit() {
 
 void child_SIGUSR1(int signum) {
     child_recieved += 1;
-    kill(getppid(), SIGUSR1);
+    kill(getppid(), signal1);
 }
 
 void child_SIGUSR2(int signum) {
@@ -54,9 +56,10 @@ void child_SIGUSR2(int signum) {
 }
 
 void child_setup() {
-    set_signal(SIGUSR1, child_SIGUSR1);
-    set_signal(SIGUSR2, child_SIGUSR2);
     child_recieved = 0;
+    set_signal(signal1, child_SIGUSR1);
+    set_signal(signal2, child_SIGUSR2);
+    printf("Child (%d) setup done\n", getpid());
 }
 
 void parent_exit() {
@@ -66,18 +69,16 @@ void parent_exit() {
            , parent_sent
            , parent_recieved
           );
-    kill(child_pid, SIGUSR2);
-    wait(NULL);
+    kill(child_pid, signal2);
     exit(EXIT_SUCCESS);
 }
 
 void parent_SIGUSR1(int signum) {
     parent_recieved += 1;
-
-    if (TYPE == 3) {
+    if (signum == signal1) {
         if (parent_recieved < L) {
             parent_sent += 1;
-            kill(child_pid, SIGUSR1);
+            kill(child_pid, signal1);
         } else {
             parent_end = 1;
         }
@@ -85,10 +86,12 @@ void parent_SIGUSR1(int signum) {
 }
 
 void parent_setup() {
-    set_signal(SIGUSR1, parent_SIGUSR1);
     parent_sent = 0;
     parent_recieved = 0;
+    set_signal(signal1, parent_SIGUSR1);
+    printf("Parent (%d) setup done\n", getpid());
 }
+
 
 int main (int argc, char** argv) {
 
@@ -97,7 +100,15 @@ int main (int argc, char** argv) {
     if (argc == 3) {
         L = atoi(argv[1]);
         TYPE = atoi(argv[2]);
-        if (TYPE < 1 || TYPE > 3) show_help();
+        if (TYPE == 1 || TYPE == 2) {
+            signal1 = SIGUSR1;
+            signal2 = SIGUSR2;
+        } else if (TYPE == 3) {
+            signal1 = SIGRTMIN+1;
+            signal2 = SIGRTMIN;
+        } else {
+            show_help();
+        }
     } else {
         show_help();
     }
@@ -110,25 +121,18 @@ int main (int argc, char** argv) {
     } else if (child_pid == 0) {
         // Child fork
         child_setup();
-        printf("Child (%d) setup done\n", getpid());
     } else {
         // Parent fork
         parent_setup();
-        printf("Parent (%d) setup done\n", getpid());
-        switch (TYPE) {
-            case 1:
-                while (parent_sent < L) {
-                    kill(child_pid, SIGUSR1);
-                    parent_sent += 1;
-                }
-                parent_end = 1;
-                break;
-            case 2:
-                break;
-            case 3:
-                kill(child_pid, SIGUSR1);
-                parent_sent = 1;
-                break;
+        if (TYPE == 2) {
+            kill(child_pid, signal1);
+            parent_sent = 1;
+        } else {
+            while (parent_sent < L) {
+                kill(child_pid, signal1);
+                parent_sent += 1;
+            }
+            parent_end = 1;
         }
     }
 
