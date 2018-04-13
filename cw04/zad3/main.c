@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <signal.h>
 
@@ -56,8 +57,6 @@ void child_setup() {
     set_signal(SIGUSR1, child_SIGUSR1);
     set_signal(SIGUSR2, child_SIGUSR2);
     child_recieved = 0;
-
-    printf("Child (%d) setup done\n", getpid());
 }
 
 void parent_exit() {
@@ -68,6 +67,7 @@ void parent_exit() {
            , parent_recieved
           );
     kill(child_pid, SIGUSR2);
+    wait(NULL);
     exit(EXIT_SUCCESS);
 }
 
@@ -88,8 +88,6 @@ void parent_setup() {
     set_signal(SIGUSR1, parent_SIGUSR1);
     parent_sent = 0;
     parent_recieved = 0;
-
-    printf("Parent (%d) setup done\n", getpid());
 }
 
 int main (int argc, char** argv) {
@@ -112,9 +110,11 @@ int main (int argc, char** argv) {
     } else if (child_pid == 0) {
         // Child fork
         child_setup();
+        printf("Child (%d) setup done\n", getpid());
     } else {
         // Parent fork
         parent_setup();
+        printf("Parent (%d) setup done\n", getpid());
         switch (TYPE) {
             case 1:
                 while (parent_sent < L) {
