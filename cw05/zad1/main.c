@@ -1,0 +1,131 @@
+//
+// Karol Bak
+//
+
+#define _GNU_SOURCE
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/resource.h>
+
+#define BUFF_SIZE 100000
+#define MAX_ARGS 50
+
+
+void print_help (char* prog_name) {
+    fprintf(stderr, "Usage: %s <file_name> [<time_limit>(sec) <mem_limit>(MB)]\n", prog_name);
+}
+
+void print_rusage (struct rusage* start, struct rusage* end) {
+    time_t usr_delta_time = 
+        (end->ru_utime.tv_sec - start->ru_utime.tv_sec) * 1000000 +
+        end->ru_utime.tv_usec - start->ru_utime.tv_usec;
+    time_t sys_delta_time = 
+        (end->ru_stime.tv_sec - start->ru_stime.tv_sec) * 1000000 +
+        end->ru_stime.tv_usec - start->ru_stime.tv_usec;
+    printf("Usr time: %ld \n"
+        "Sys time: %ld \n"
+        "maxrss:   %f \n"
+        , usr_delta_time
+        , sys_delta_time
+        , end->ru_maxrss / 1024.0);
+}
+
+int print_signal_info (int status, char* line) {
+    if (WIFEXITED(status)) {
+        if (WEXITSTATUS(status) != 0) {
+            printf("Execution of '%s' \nended with status %d (error).\n"
+                , line, WEXITSTATUS(status));
+            return EXIT_FAILURE;
+        }
+    } else if (WIFSIGNALED(status)) {
+        printf("Execution of '%s' \nkilled by signal %d.\n"
+            , line, WTERMSIG(status));
+        return EXIT_FAILURE;
+    } else if (WIFSTOPPED(status)) {
+        printf("Execution of '%s' \nstopped by signal %d.\n"
+            , line, WSTOPSIG(status));
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
+int execute_one_line (char* line) {
+
+    struct rusage usage_start;
+    struct rusage usage_end;
+
+    char* line_copy = strdup(line);
+    char* pargv[MAX_ARGS];
+    char* token = NULL;
+    pid_t child_pid, w;
+    int status;
+
+    int i = 0;
+    while ((token = strsep(&line_copy, " ")) != NULL) {
+        if (strlen(token) > 0) {
+            pargv[i] = token;
+            i++;
+        }
+    }
+
+    child_pid = fork();
+    if (child_pid == -1) {
+        perror("fork");
+        free(line_copy);
+        return EXIT_FAILURE;
+    } else if (child_pid == 0) {
+        printf("----------\nExec: %s\n", line);
+        execvp(pargv[0], pargv);
+        exit(EXIT_SUCCESS);
+    } else {
+        getrusage(RUSAGE_CHILDREN, &usage_start);
+        w = waitpid(child_pid, &status, 0);
+        if (w == -1) {
+            perror("waitpid");
+            free(line_copy);
+            return EXIT_FAILURE;
+        }
+        if(print_signal_info(status, line) == EXIT_FAILURE) {
+            free(line_copy);
+            return EXIT_FAILURE;
+        }
+        getrusage(RUSAGE_CHILDREN, &usage_end);
+    }
+
+    free(line_copy);
+    print_rusage(&usage_start, &usage_end);
+    return EXIT_SUCCESS;
+}
+
+int main (int argc, char** argv) {
+
+    if (argc != 2) {
+        print_help(argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    char* file_name = argv[1];
+    FILE* file = fopen(file_name, "r");
+    char* file_buffer = (char*) calloc(BUFF_SIZE, sizeof(char));
+    if (file == NULL) {
+        printf("A problem occured when opening the file %s\n", file_name);
+        return EXIT_FAILURE;
+    }
+    fread(file_buffer, 1, BUFF_SIZE, file);
+
+    char* line = NULL;
+
+    while ((line = strsep(&file_buffer, "\n")) != NULL) {
+        if (strlen(line) > 1) {
+            if (execute_one_line(line) == EXIT_FAILURE) break;
+        }
+    }
+
+    free(line);
+    free(file_buffer);
+    fclose(file);
+    return EXIT_SUCCESS;
+}
