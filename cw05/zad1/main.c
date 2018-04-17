@@ -52,48 +52,59 @@ int print_signal_info (int status, char* line) {
     return EXIT_SUCCESS;
 }
 
+int execute_one_program (char* argv) {
+    char* argv_copy = strdup(argv);
+    char* token = NULL;
+    char* pargv[MAX_ARGS];
+
+    int i = 0;
+    while ((token = strsep(&argv_copy, " ")) != NULL) {
+        if (strlen(token) > 0) {
+            pargv[i] = token;
+            i++;
+        }
+    }
+    return execvp(pargv[0], pargv);
+}
+
 int execute_one_line (char* line) {
 
     struct rusage usage_start;
     struct rusage usage_end;
 
     char* line_copy = strdup(line);
-    char* pargv[MAX_ARGS];
-    char* token = NULL;
+    char* program = NULL;
     pid_t child_pid, w;
     int status;
 
-    int i = 0;
-    while ((token = strsep(&line_copy, " ")) != NULL) {
-        if (strlen(token) > 0) {
-            pargv[i] = token;
-            i++;
+    while ((program = strsep(&line_copy, "|")) != NULL) {
+        if (strlen(program) > 0) {
+            child_pid = fork();
+            if (child_pid == -1) {
+                perror("fork");
+                free(line_copy);
+                return EXIT_FAILURE;
+            } else if (child_pid == 0) {
+                printf("----------\nExec: %s\n", line);
+                execute_one_program(line);
+                exit(EXIT_SUCCESS);
+            } else {
+                getrusage(RUSAGE_CHILDREN, &usage_start);
+                w = waitpid(child_pid, &status, 0);
+                if (w == -1) {
+                    perror("waitpid");
+                    free(line_copy);
+                    return EXIT_FAILURE;
+                }
+                if(print_signal_info(status, line) == EXIT_FAILURE) {
+                    free(line_copy);
+                    return EXIT_FAILURE;
+                }
+                getrusage(RUSAGE_CHILDREN, &usage_end);
+            }
         }
     }
 
-    child_pid = fork();
-    if (child_pid == -1) {
-        perror("fork");
-        free(line_copy);
-        return EXIT_FAILURE;
-    } else if (child_pid == 0) {
-        printf("----------\nExec: %s\n", line);
-        execvp(pargv[0], pargv);
-        exit(EXIT_SUCCESS);
-    } else {
-        getrusage(RUSAGE_CHILDREN, &usage_start);
-        w = waitpid(child_pid, &status, 0);
-        if (w == -1) {
-            perror("waitpid");
-            free(line_copy);
-            return EXIT_FAILURE;
-        }
-        if(print_signal_info(status, line) == EXIT_FAILURE) {
-            free(line_copy);
-            return EXIT_FAILURE;
-        }
-        getrusage(RUSAGE_CHILDREN, &usage_end);
-    }
 
     free(line_copy);
     print_rusage(&usage_start, &usage_end);
