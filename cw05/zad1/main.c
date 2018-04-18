@@ -36,17 +36,14 @@ void print_rusage (struct rusage* start, struct rusage* end) {
 int print_signal_info (int status, char* line) {
     if (WIFEXITED(status)) {
         if (WEXITSTATUS(status) != 0) {
-            printf("Execution of '%s' \nended with status %d (error).\n"
-                , line, WEXITSTATUS(status));
+            printf("Execution of '%s' \nended with status %d (error).\n", line, WEXITSTATUS(status));
             return EXIT_FAILURE;
         }
     } else if (WIFSIGNALED(status)) {
-        printf("Execution of '%s' \nkilled by signal %d.\n"
-            , line, WTERMSIG(status));
+        printf("Execution of '%s' \nkilled by signal %d.\n", line, WTERMSIG(status));
         return EXIT_FAILURE;
     } else if (WIFSTOPPED(status)) {
-        printf("Execution of '%s' \nstopped by signal %d.\n"
-            , line, WSTOPSIG(status));
+        printf("Execution of '%s' \nstopped by signal %d.\n", line, WSTOPSIG(status));
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -56,7 +53,6 @@ int execute_one_program (char* argv) {
     char* argv_copy = strdup(argv);
     char* token = NULL;
     char* pargv[MAX_ARGS];
-
     int i = 0;
     while ((token = strsep(&argv_copy, " ")) != NULL) {
         if (strlen(token) > 0) {
@@ -69,54 +65,45 @@ int execute_one_program (char* argv) {
 
 int execute_one_line (char* line) {
 
-    struct rusage usage_start;
-    struct rusage usage_end;
-
     char* line_copy = strdup(line);
     char* program = NULL;
     pid_t child_pid;
-    int status;
 
+    int pfd[2];
+    int fd[2];
+
+    int i = 0;
     while ((program = strsep(&line_copy, "|")) != NULL) {
-        if (strlen(program) > 0) {
-            printf("----------\nExec: %s\n", program);
-            child_pid = fork();
-            if (child_pid == -1) {
-                perror("fork");
-                return EXIT_FAILURE;
-            } else if (child_pid == 0) {
-                execute_one_program(program);
-                exit(EXIT_SUCCESS);
-            }
-            getrusage(RUSAGE_CHILDREN, &usage_start);
-            while (wait(&status) != -1);
-            getrusage(RUSAGE_CHILDREN, &usage_end);
-            print_rusage(&usage_start, &usage_end);
+        pfd[0] = fd[0];
+        pfd[1] = fd[1];
+        pipe(fd);
+        child_pid = fork();
+        if (child_pid == -1) {
+            perror("fork");
+            return EXIT_FAILURE;
+        } else if (child_pid == 0) {
+            close(fd[0]);
+            close(pfd[1]);
+            dup2(fd[1], STDOUT_FILENO);
+            dup2(pfd[0], STDIN_FILENO);
+            if (i == 0) close(pfd[0]);
+            execute_one_program(program);
+            exit(EXIT_SUCCESS);
         }
+        close(pfd[0]);
+        close(pfd[1]);
+        close(fd[1]);
+        i += 1;
     }
-    free(line_copy);
-
-    if(print_signal_info(status, line) == EXIT_FAILURE) {
-        return EXIT_FAILURE;
-    }
+    char buf[100];
+    read(fd[0], buf, sizeof(buf));
+    printf("%s", buf);
     return EXIT_SUCCESS;
 }
 
 int main (int argc, char** argv) {
 
-    int fd[2];
-    pipe(fd);
-    if (fork() == 0) { // dziecko
-        close(fd[0]);
-        dup2(fd[1], STDOUT_FILENO);
-        execlp("echo", "echo","sshhoor\nriidiAlano\nrlsntl\n", NULL);
-    } else if (fork() == 0) { // kolejne dziecko
-        close(fd[1]);
-        dup2(fd[0], STDIN_FILENO);
-        execlp("grep", "grep","Ala", NULL);
-    } 
-
-    /*if (argc != 2) {
+    if (argc != 2) {
         print_help(argv[0]);
         return EXIT_FAILURE;
     }
@@ -138,9 +125,7 @@ int main (int argc, char** argv) {
         }
     }
 
-    free(line);
     free(file_buffer);
     fclose(file);
     return EXIT_SUCCESS;
-    */
 }

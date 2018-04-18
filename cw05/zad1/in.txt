@@ -1,2 +1,2 @@
-ls -l
-ps T 
+cat /etc/passwd | grep sys | head -n 2
+ps -T
