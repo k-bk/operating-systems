@@ -74,40 +74,31 @@ int execute_one_line (char* line) {
 
     char* line_copy = strdup(line);
     char* program = NULL;
-    pid_t child_pid, w;
+    pid_t child_pid;
     int status;
 
     while ((program = strsep(&line_copy, "|")) != NULL) {
         if (strlen(program) > 0) {
+            printf("----------\nExec: %s\n", program);
             child_pid = fork();
             if (child_pid == -1) {
                 perror("fork");
-                free(line_copy);
                 return EXIT_FAILURE;
             } else if (child_pid == 0) {
-                printf("----------\nExec: %s\n", line);
-                execute_one_program(line);
+                execute_one_program(program);
                 exit(EXIT_SUCCESS);
-            } else {
-                getrusage(RUSAGE_CHILDREN, &usage_start);
-                w = waitpid(child_pid, &status, 0);
-                if (w == -1) {
-                    perror("waitpid");
-                    free(line_copy);
-                    return EXIT_FAILURE;
-                }
-                if(print_signal_info(status, line) == EXIT_FAILURE) {
-                    free(line_copy);
-                    return EXIT_FAILURE;
-                }
-                getrusage(RUSAGE_CHILDREN, &usage_end);
             }
+            getrusage(RUSAGE_CHILDREN, &usage_start);
+            while (wait(&status) != -1);
+            getrusage(RUSAGE_CHILDREN, &usage_end);
+            print_rusage(&usage_start, &usage_end);
         }
     }
-
-
     free(line_copy);
-    print_rusage(&usage_start, &usage_end);
+
+    if(print_signal_info(status, line) == EXIT_FAILURE) {
+        return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
 }
 
