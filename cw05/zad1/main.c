@@ -106,18 +106,15 @@ int main (int argc, char** argv) {
 
     int fd[2];
     pipe(fd);
-    pid_t pid = fork();
-    if (pid == 0) { // dziecko
+    if (fork() == 0) { // dziecko
         close(fd[0]);
         dup2(fd[1], STDOUT_FILENO);
         execlp("echo", "echo","sshhoor\nriidiAlano\nrlsntl\n", NULL);
-    } else if (pid == 0) { // kolejne dziecko
+    } else if (fork() == 0) { // kolejne dziecko
         close(fd[1]);
         dup2(fd[0], STDIN_FILENO);
         execlp("grep", "grep","Ala", NULL);
     } 
-
-    while (wait(NULL));
 
     /*if (argc != 2) {
         print_help(argv[0]);
