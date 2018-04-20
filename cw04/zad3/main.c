@@ -30,7 +30,7 @@ void show_help () {
     exit(EXIT_FAILURE);
 }
 
-void set_signal(int signum, void* handler) {
+void set_signal(int signum, void(*handler)(int)) {
     struct sigaction act;
     act.sa_handler = handler;
     sigfillset(&act.sa_mask);
