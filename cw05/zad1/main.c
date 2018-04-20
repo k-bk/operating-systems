@@ -15,22 +15,7 @@
 
 
 void print_help (char* prog_name) {
-    fprintf(stderr, "Usage: %s <file_name> [<time_limit>(sec) <mem_limit>(MB)]\n", prog_name);
-}
-
-void print_rusage (struct rusage* start, struct rusage* end) {
-    time_t usr_delta_time = 
-        (end->ru_utime.tv_sec - start->ru_utime.tv_sec) * 1000000 +
-        end->ru_utime.tv_usec - start->ru_utime.tv_usec;
-    time_t sys_delta_time = 
-        (end->ru_stime.tv_sec - start->ru_stime.tv_sec) * 1000000 +
-        end->ru_stime.tv_usec - start->ru_stime.tv_usec;
-    printf("Usr time: %ld \n"
-        "Sys time: %ld \n"
-        "maxrss:   %f \n"
-        , usr_delta_time
-        , sys_delta_time
-        , end->ru_maxrss / 1024.0);
+    fprintf(stderr, "Usage: %s <file_name>\n", prog_name);
 }
 
 int print_signal_info (int status, char* line) {
