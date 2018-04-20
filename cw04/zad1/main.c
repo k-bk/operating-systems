@@ -62,6 +62,7 @@ int main () {
     sigaction(SIGINT, &act, NULL);
     signal(SIGTSTP, use_SIGTSTP);
 #ifdef BASH
+    printf("Running bash version\n");
     bash_run();
 #else
     run();

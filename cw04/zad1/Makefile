@@ -2,17 +2,22 @@ CC = gcc
 CFLAGS = -Wall
 DEPS = 
 OBJ = main.o
-DEF =  
 
-.PHONY: all clean program
+.PHONY: all clean program bash
 
-all: program
+all: program bash
+
+main_bash.o: main.c 
+	$(CC) -c -o main_bash.o $< $(CFLAGS) -DBASH
+
+bash: main_bash.o 
+	$(CC) -o program_bash main_bash.o $(CFLAGS) -DBASH
 
 %.o: %.c $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS) $(addprefix -D, $(DEF))
+	$(CC) -c -o $@ $< $(CFLAGS)
 
 program: $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS) $(addprefix -D, $(DEF))
+	$(CC) -o $@ $^ $(CFLAGS) 
 
 clean: 
-	rm -rf *.o *.so *.a program 
+	rm -rf *.o *.so *.a program program_bash
