@@ -6,10 +6,24 @@
 #include <unistd.h>
 #include <time.h>
 #include <string.h>
+#include <signal.h>
 #include "protocol.h"
 
+int private_qid = -1;
+int server_qid = -1;
+
 void free_resources () {
-    printf ("ending everything\n");
+    if (private_qid == -1) return;
+    if (msgctl(private_qid, IPC_RMID, NULL) == -1) {
+        perror("deleting the queue");
+        return;
+    }
+    printf("(client) Queue %d closed.\n", private_qid);
+}
+
+void use_SIGINT (int signum) {
+    printf("(client) Recieved SIGINT.\n");
+    exit(EXIT_FAILURE);
 }
 
 int command_to_int (char* command) {
@@ -19,45 +33,88 @@ int command_to_int (char* command) {
     if (strcmp(command, "MUL") == 0) return MUL;
     if (strcmp(command, "DIV") == 0) return DIV;
     if (strcmp(command, "START") == 0) return START;
-    if (strcmp(command, "END") == 0) return END;
+    if (strcmp(command, "STOP") == 0) return STOP;
+    if (strcmp(command, "TIME") == 0) return TIME;
     return -1; 
 }
 
-int main () {
-    srand(time(NULL));
-    atexit (free_resources);
-
-    key_t srv_key = ftok("server.c", 'a');
-    int srv_qid = msgget(srv_key, 0);
-    if (srv_qid == -1) perror("opening the FIFO");
-    
-    key_t key = ftok("client.c", rand() % 256);
-    int qid = msgget(key, IPC_CREAT | IPC_PRIVATE | S_IRUSR | S_IWUSR);
-    if (qid == -1) perror("creating the private FIFO");
-    printf("(client) key: %d\n", key);
-    printf("(client) Waiting for server to connect...\n");
-
-    int msgsize = 100;
-    size_t buffsize = sizeof(my_msgbuf) + msgsize;
-    my_msgbuf* buffer = malloc(buffsize);
-    my_msgbuf* buffer_recieve = malloc(buffsize);
-    buffer->type = 1;
-    buffer->cmd = START;
-    sprintf(buffer->args, "%d", key);
-    if (msgsnd(srv_qid, buffer, buffsize, 0) == -1) perror("sending the message");
-    msgrcv(qid, buffer, buffsize, 0, 0);
-    char command [15];
-    printf("srv_qid: %d qid: %d\n", srv_qid, qid);
-    printf("Welcome to HyperCalc2000. Type [MIRROR|ADD|SUB|MUL|DIV|END] <args>\n> ");
-    while(scanf("%[A-Z] %[0-9. ]", command, buffer->args)) {
-        int cmd = command_to_int(command);
-        if (cmd == -1) printf("'%s' is a wrong command. Type 'help'.\n", command);
-        buffer->cmd = cmd;
-        if (msgsnd(srv_qid, buffer, buffsize, 0)) perror("sending the command");
-        msgrcv(qid, buffer_recieve, buffsize, 0, 0);
-        printf("Result: id: %d args: %s\n", buffer_recieve->id, buffer_recieve->args);
-        printf("> ");
+int main (int argc, char** argv) {
+    if (atexit (free_resources) != 0) {
+        perror("setting atexit");
+        exit(EXIT_FAILURE);
     }
-    free(buffer);
+    if (signal(SIGINT, use_SIGINT) < 0) {
+        perror("setting signal handler");
+        exit(EXIT_FAILURE);
+    }
+    printf("(client) initialization...\n");
+    char* home_path = getenv("HOME");
+    if (home_path == NULL) {
+        perror("getenv");
+        exit(EXIT_FAILURE);
+    }
+    key_t key = ftok (home_path, PROJECT_ID);
+    key_t private_key = key + getpid(); 
+    printf("(client) key: %d\n", key);
+    if (key == -1) {
+        perror("generating ftok");
+        exit(EXIT_FAILURE);
+    }
+    printf("(client) Waiting for server to connect...\n");
+    server_qid = msgget(key, IPC_CREAT | S_IRUSR | S_IWUSR);
+    private_qid = msgget(private_key, IPC_CREAT | S_IRUSR | S_IWUSR);
+    if(server_qid == -1 || private_qid == -1) {
+        perror("opening the FIFO");
+        exit(EXIT_FAILURE);
+    }
+    printf("(client) server_qid = %d\n", server_qid);
+    printf("(client) private_qid = %d\n", private_qid);
+
+    message recieve_buffer; 
+    message buffer; 
+    buffer.type = 1;
+    buffer.cmd = START;
+    buffer.id = getpid();
+    sprintf(buffer.args, "%d", private_key);
+    msgsnd(server_qid, &buffer, MESSAGE_SIZE, 0);
+
+    if (msgrcv(private_qid, &recieve_buffer, MESSAGE_SIZE, 0, 0) == -1) {
+        perror("recieving");
+        exit(EXIT_FAILURE);
+    }
+    printf("(recieve) id: %d cmd: %d args: %s\n", recieve_buffer.id, recieve_buffer.cmd, recieve_buffer.args);
+    buffer.id = recieve_buffer.id;
+
+    printf("Welcome to HyperCalc2000. Type [MIRROR|ADD|SUB|MUL|DIV|END] <args>\n");
+
+    char command [15];
+    while(1) {
+        printf("> ");
+        if (scanf("%s", command) == -1) continue;
+        //printf("command = %s, args = %s\n", command, buffer.args);
+        int cmd = command_to_int(command);
+        if (cmd == -1) printf("'%s' is a wrong command.\n", command);
+        buffer.cmd = cmd;
+        switch (cmd) {
+            case MIRROR:
+                scanf("%s", buffer.args);
+                break;
+            case ADD: case SUB: case MUL: case DIV:
+                scanf("%[-0-9 ]", buffer.args); 
+                break;
+            case TIME: 
+                break;
+        }
+        if (msgsnd(server_qid, &buffer, MESSAGE_SIZE, 0)) {
+            perror("sending the command");
+            exit(EXIT_FAILURE);
+        }
+        if (msgrcv(private_qid, &recieve_buffer, MESSAGE_SIZE, 0, 0) == -1) {
+            perror("recieving");
+            exit(EXIT_FAILURE);
+        }
+        printf(" = %s\n", recieve_buffer.args);
+        //printf("(recieve) id: %d cmd: %d args: %s\n", recieve_buffer.id, recieve_buffer.cmd, recieve_buffer.args);
+    }
     exit (EXIT_SUCCESS);
 }

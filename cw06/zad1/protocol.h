@@ -9,12 +9,17 @@
 #define MUL     6
 #define DIV     7
 #define TIME    8
-#define END     9
+#define STOP    9
 #define START   10 
+#define MAX_CLIENTS 20 
+#define MAX_MSGLEN 100
+#define PROJECT_ID 7 
 
-typedef struct my_msgbuf {
+typedef struct message {
     long type;
     int id; 
     int cmd;
-    char args[1];
-} my_msgbuf;
+    char args[MAX_MSGLEN];
+} message;
+
+const size_t MESSAGE_SIZE = sizeof(message) - sizeof(long);
