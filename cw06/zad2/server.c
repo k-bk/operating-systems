@@ -1,17 +1,21 @@
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/msg.h>
-#include <sys/ipc.h>
-#include <sys/stat.h>
+#include <assert.h>
 #include <string.h>
-#include <signal.h>
-#include <time.h>
+#include <errno.h>
+#include <unistd.h>
 #include <mqueue.h>
+#include <ctype.h>
+#include <time.h>
+#include <fcntl.h>
+#include <signal.h>
+
 #include "protocol.h"
 
 typedef struct client {
     int id;
-    int des;
+    mqd_t des;
 } client;
 
 void free_resources ();
@@ -21,19 +25,18 @@ int message_send(int id, int cmd, char* args);
 
 client clients [MAX_CLIENTS];
 int client_count = 0;
-int server_des = -1;
-unsigned int priority;
+mqd_t server_des = -1;
 
 // --------- Resource management ------------------------------
 
 void free_resources () {
     if (server_des != -1) {
-	if(mq_close(server_des)) perror("closing server_des");
+	if (mq_close(server_des)) perror("closing server_des");
     }
     for (int i = 0; i < client_count; i++) {
-	mq_close();
+	if (mq_close(clients[i].des)) perror("closing server_des");
     }
-    printf("(client) Queue %d closed.\n", private_des, server_des);
+    printf("(client) Queue %d closed.\n", server_des);
     mq_unlink(SERVER_NAME);
 }
 
@@ -43,7 +46,6 @@ void use_SIGINT (int signum) {
 }
 
 // --------- Server configuration -----------------------------
-
 int find_queue_with_id(int id) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].id == id) return clients[i].des;
@@ -58,7 +60,7 @@ int message_send(int id, int cmd, char* args) {
     sprintf(buffer.args, "%s", args);
     int des = find_queue_with_id(id);
     printf("(message) id: %d des: %d args: %s\n", buffer.id, des, buffer.args);
-    int status = mq_send(des, (char*) &buffer, MESSAGE_SIZE, 1);
+    int status = mq_send(des, (char *) &buffer, MESSAGE_SIZE, 1);
     return status;
 }
 
@@ -68,8 +70,7 @@ void add_client (int id, char* args) {
         return;
     }
 
-    int key = atoi(args);
-    int des = msgget(key, 0);
+    mqd_t des = mq_open(args, O_WRONLY);
     if (des == -1) {
         perror("using given key");
         exit(EXIT_FAILURE);
@@ -136,33 +137,39 @@ char* mirror (char* args) {
     printf("(mirror) %s\n", result);
     return result;
 }
-
 // --------- Main program -------------------------------------
 
 int main (int argc, char** argv) {
+
     if (atexit (free_resources) != 0) {
-        perror("setting atexit");
-        exit(EXIT_FAILURE);
+    perror("setting atexit");
+    exit(EXIT_FAILURE);
     }
     if (signal(SIGINT, use_SIGINT) < 0) {
         perror("setting signal handler");
         exit(EXIT_FAILURE);
     }
+    printf("(server) Welcome to POSIX implementation of server.\n");
     printf("(server) initialization...\n");
-    server_des = mq_open(SERVER_NAME, O_CREAT | O_RDWR, NULL);
+
+    struct mq_attr attr;
+    attr.mq_maxmsg = 10;
+    attr.mq_msgsize = MESSAGE_SIZE;
+
+    server_des = mq_open(SERVER_NAME, O_RDONLY | O_CREAT | O_EXCL, 0666, &attr);
     if(server_des == -1) {
         perror("opening the FIFO");
         exit(EXIT_FAILURE);
     }
     printf("(server) server_des = %d\n", server_des);
 
+    message buffer;
     int id_gen = 0;
-    message buffer; 
-    double result = 0;
+    double result;
     char result_str [100];
 
     while (1) {
-        if (mq_receive(server_des, (char*) &buffer, MESSAGE_SIZE, &priority) == -1) perror("receive");
+        if (mq_receive(server_des, (char *) &buffer, MESSAGE_SIZE, NULL) == -1) perror("receive");
         printf("(receive) id: %d cmd: %d args: %s\n", buffer.id, buffer.cmd, buffer.args);
         switch (buffer.cmd) {
             case START: 
