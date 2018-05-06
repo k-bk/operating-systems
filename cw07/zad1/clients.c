@@ -56,26 +56,24 @@ void sem_give (int semid) {
 // ---------- Main program -------------------------
 int main (int argc, char **argv) {
 
-    if (argc < 2) {
+    if (argc < 3) {
         printf(ANSI_COLOR_RED "%s: not enough arguments\n" ANSI_COLOR_RESET
                "Usage: '%s <num_of_chairs>'\n", argv[0], argv[0]);
     }
 
-    barber_ready = semget(key_t key, 1, IPC_CREAT | S_IWUSR | S_IRUSR);
-    customers_ready = semget(key_t key, 1, IPC_CREAT | S_IWUSR | S_IRUSR);
-    change_waiting_room = semget(key_t key, 1, IPC_CREAT | S_IWUSR | S_IRUSR);
+    barber_ready = semget(key_t key, 0);
+    customers_ready = semget(key_t key, 0);
+    change_waiting_room = semget(key_t key, 0);
 
     while (1) {
-        log_message("I am falling asleep... zzz...");
-        sem_take(customers_ready);
-        log_message("Woken up!");
         sem_take(change_waiting_room);
-        log_message("Please %d, come here.", pid);
-        // take sth from FIFO
-        sem_give(barber_ready);
-        log_message("Mr %d, I am ready for the haircut.", pid);
-        sem_give(change_waiting_room);
-        log_message("Mr %d, I have finished your haircut.", pid);
+        if (FIFO has free places) {
+            LOG_MYSELF in FIFO
+            sem_give(customers_ready);
+            sem_give(change_waiting_room);
+            sem_take(barber_ready);
+
+        }
     }
 
     return EXIT_SUCCESS;
