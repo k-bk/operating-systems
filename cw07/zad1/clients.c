@@ -6,20 +6,7 @@
 #include <sys/sem.h>
 #include <time.h>
 #include <stdarg.h>
-
-#define ANSI_COLOR_RED     "\x1b[31m"
-#define ANSI_COLOR_GREEN   "\x1b[32m"
-#define ANSI_COLOR_YELLOW  "\x1b[33m"
-#define ANSI_COLOR_BLUE    "\x1b[34m"
-#define ANSI_COLOR_MAGENTA "\x1b[35m"
-#define ANSI_COLOR_CYAN    "\x1b[36m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
-
-// ---------- Semaphores ---------------------------
-
-int barber_ready;
-int customers_ready;
-int change_waiting_room; 
+#include "communication.h"
 
 // ---------- Communication ------------------------
 
@@ -35,6 +22,8 @@ void log_message (const char *message, ... ) {
 
     printf("\n");
 }
+
+// ---------- Semaphores ---------------------------
 
 void sem_take (int semid) {
     struct sembuf op;
@@ -54,10 +43,11 @@ void sem_give (int semid) {
 
 
 // ---------- Main program -------------------------
+
 int main (int argc, char **argv) {
 
     if (argc < 3) {
-        printf(ANSI_COLOR_RED "%s: not enough arguments\n" ANSI_COLOR_RESET
+        printf(COLOR_RED "%s: not enough arguments\n" COLOR_RESET
                "Usage: '%s <num_of_chairs>'\n", argv[0], argv[0]);
     }
 

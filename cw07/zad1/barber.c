@@ -5,36 +5,12 @@
 #include <sys/ipc.h>
 #include <sys/sem.h>
 #include <time.h>
-#include <stdarg.h>
-
-#define ANSI_COLOR_RED     "\x1b[31m"
-#define ANSI_COLOR_GREEN   "\x1b[32m"
-#define ANSI_COLOR_YELLOW  "\x1b[33m"
-#define ANSI_COLOR_BLUE    "\x1b[34m"
-#define ANSI_COLOR_MAGENTA "\x1b[35m"
-#define ANSI_COLOR_CYAN    "\x1b[36m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
+#include "shared_barber.h"
+#include "messages.h"
 
 // ---------- Semaphores ---------------------------
 
-int barber_ready;
-int customers_ready;
-int change_waiting_room; 
-
-// ---------- Communication ------------------------
-
-void log_message (const char *message, ... ) {
-    struct timespec time_stamp;
-    clock_gettime(CLOCK_MONOTONIC, &time_stamp);
-    printf("%ld ", time_stamp.tv_nsec);
-
-    va_list arg;
-    va_start(arg, message);
-    vprintf(message, arg);
-    va_end(arg);
-
-    printf("\n");
-}
+shared state;
 
 void sem_take (int semid) {
     struct sembuf op;
@@ -53,30 +29,48 @@ void sem_give (int semid) {
 }
 
 
-// ---------- Main program -------------------------
-int main (int argc, char **argv) {
+// ---------- Communication ------------------------
 
-    if (argc < 2) {
-        printf(ANSI_COLOR_RED "%s: not enough arguments\n" ANSI_COLOR_RESET
-               "Usage: '%s <num_of_chairs>'\n", argv[0], argv[0]);
-    }
+void err (const char *msg) {
+    errno != 0 ? perror(msg) : printf(COLOR_RED"%s\n", msg);
+    exit(EXIT_FAILURE);
+}
 
-    barber_ready = semget(key_t key, 1, IPC_CREAT | S_IWUSR | S_IRUSR);
-    customers_ready = semget(key_t key, 1, IPC_CREAT | S_IWUSR | S_IRUSR);
-    change_waiting_room = semget(key_t key, 1, IPC_CREAT | S_IWUSR | S_IRUSR);
-
+void barber () {
     while (1) {
         log_message("I am falling asleep... zzz...");
-        sem_take(customers_ready);
+        sem_take(state.customers_ready);
         log_message("Woken up!");
-        sem_take(change_waiting_room);
+        sem_take(state.change_waiting_room);
+
         log_message("Please %d, come here.", pid);
         // take sth from FIFO
-        sem_give(barber_ready);
+        sem_give(state.barber_ready);
         log_message("Mr %d, I am ready for the haircut.", pid);
-        sem_give(change_waiting_room);
+        sem_give(state.change_waiting_room);
         log_message("Mr %d, I have finished your haircut.", pid);
     }
+}
+
+// ---------- Main program -------------------------
+
+int main (int argc, char **argv) {
+
+    log_message("Hello my friend");
+
+    if (argc < 2) {
+        printf(COLOR_RED "%s: not enough arguments\n" COLOR_RESET
+               "Usage: '%s <num_of_chairs>'\n", argv[0], argv[0]);
+    }
+    char *home_path = getenv("HOME");
+    if (home_path == NULL) err("getenv");
+    int shared(ftok(home_path, 0), sizeof(shared), IPC_CREAT | S_IWUSR | S_IRUSR);
+
+    barber_ready = semget(ftok(home_path, 1), 1, IPC_CREAT | S_IWUSR | S_IRUSR);
+    customers_ready = semget(ftok(home_path 2), 1, IPC_CREAT | S_IWUSR | S_IRUSR);
+    change_WR = semget(ftok(home_path 3), 1, IPC_CREAT | S_IWUSR | S_IRUSR);
+
+    barber();
 
     return EXIT_SUCCESS;
 }

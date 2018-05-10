@@ -1,5 +1,6 @@
 CC = gcc
 CFLAGS = -Wall
+LIBS = messages.l
 
 all: barber
 
