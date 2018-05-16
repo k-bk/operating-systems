@@ -1,8 +1,11 @@
 CC = gcc
 CFLAGS = -Wall
-LIBS = messages.l
+LIBS = messages.o
 
 all: barber
+
+barber: $<.c $(LIBS)
+	$(CC) -o $< $^ $(CFLAGS)
 
 %.o: %.c
 	$(CC) -c $^ $(CFLAGS)

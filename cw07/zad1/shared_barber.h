@@ -13,7 +13,6 @@ typedef struct shared {
     int waiting_room; // fifo
     int barber_ready;
     int chair;
-    int haircut;
     int customers_ready;
     int change_waiting_room; 
 } shared;

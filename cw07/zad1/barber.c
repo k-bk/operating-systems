@@ -1,12 +1,10 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <sys/types.h>
 #include <sys/shm.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
 #include <sys/msg.h>
 #include <sys/stat.h>
-#include <time.h>
 #include <errno.h>
 #include "shared_barber.h"
 #include "messages.h"
@@ -19,6 +17,13 @@ shared *state;
 void err (const char *msg) {
     errno != 0 ? perror(msg) : printf(COLOR_RED"%s\n", msg);
     exit(EXIT_FAILURE);
+}
+
+void clean_up () {
+    semctl(state->barber_ready, 0, IPC_RMID);
+    semctl(state->customers_ready, 0, IPC_RMID);
+    semctl(state->change_waiting_room, 1, IPC_RMID);
+    semctl(state->chair, 0, IPC_RMID);
 }
 
 void barber () {
@@ -36,8 +41,11 @@ void barber () {
                 /*msgflg*/ 0);
         log_message("Please %d, come here->", first_client.pid);
         sem_give(state->barber_ready);
-        log_message("Mr %d, I am ready for the haircut.", first_client.pid);
+        log_message("Mr %d, I can give you a haircut.", first_client.pid);
         sem_give(state->change_waiting_room);
+        sem_take(state->chair);
+        log_message("Mr %d, I am doing your haircut.", first_client.pid);
+        sem_give(state->chair);
         log_message("Mr %d, I have finished your haircut.", first_client.pid);
     }
 }
@@ -61,14 +69,38 @@ int main (int argc, char **argv) {
 
     state->barber_ready = 
         semget(ftok(home_path, 1), 1, IPC_CREAT | S_IWUSR | S_IRUSR);
+    semctl(state->barber_ready, 0, SETVAL);
+
     state->customers_ready = 
         semget(ftok(home_path, 2), 1, IPC_CREAT | S_IWUSR | S_IRUSR);
+    semctl(state->customers_ready, 0, SETVAL);
+
     state->change_waiting_room = 
         semget(ftok(home_path, 3), 1, IPC_CREAT | S_IWUSR | S_IRUSR);
-    state->waiting_room =
-        msgget(ftok(home_path, 4), IPC_CREAT | S_IWUSR | S_IRUSR);
+    semctl(state->change_waiting_room, 1, SETVAL);
 
-    barber();
+    state->chair = 
+        semget(ftok(home_path, 4), 1, IPC_CREAT | S_IWUSR | S_IRUSR);
+    semctl(state->chair, 1, SETVAL);
+
+    state->waiting_room =
+        msgget(ftok(home_path, 5), IPC_CREAT | S_IWUSR | S_IRUSR);
+
+    atexit(clean_up);
+
+    printf("Semaphores set.\n");
+
+    while(1) {
+        sem_take(state->change_waiting_room);
+        sem_give(state->barber_ready);
+        printf("i am ready\n");
+        sem_give(state->change_waiting_room);
+        printf("waiting for customer\n");
+        sem_take(state->customers_ready);
+        printf("you arrived\n");
+    }
+
+    //barber();
 
     return EXIT_SUCCESS;
 }
