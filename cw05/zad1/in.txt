@@ -1,2 +1,8 @@
+<<<<<<< Updated upstream
 cat /etc/passwd | grep sys | head -n 2
 ps -T
+=======
+ls -l | ps T | echo pies
+echo Hello
+ls -al
+>>>>>>> Stashed changes
