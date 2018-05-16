@@ -1,5 +1,5 @@
-#ifndef SHARED_BARBER.H
-#define SHARED_BARBER.H
+#ifndef SHARED_BARBER
+#define SHARED_BARBER
 
 #define COLOR_RED     "\x1b[31m"
 #define COLOR_GREEN   "\x1b[32m"
@@ -17,5 +17,10 @@ typedef struct shared {
     int customers_ready;
     int change_waiting_room; 
 } shared;
+
+typedef struct id_msg {
+    long mtype;
+    int pid;
+} id_msg;
 
 #endif
