@@ -6,18 +6,30 @@
 #include <sys/msg.h>
 #include <errno.h>
 #include <unistd.h>
+#include <signal.h>
 #include "shared_barber.h"
 #include "messages.h"
 
-// ---------- Semaphores ---------------------------
+// ---------- Globals ------------------------------
 shared *state;
+int invited = 0;
 
-// ---------- Communication ------------------------
+// ---------- Utilities ----------------------------
 
 void err (const char *msg) {
     errno != 0 ? perror(msg) : printf(COLOR_RED"%s\n", msg);
     exit(EXIT_FAILURE);
 }
+
+void use_sigint (int _) {
+    exit(EXIT_FAILURE);
+}
+
+void use_sigusr1 (int _) {
+    invited = 1;
+}
+
+// ---------- Semaphore loop -----------------------
 
 void client (int haircuts_needed) {
     id_msg my_id;
@@ -26,8 +38,15 @@ void client (int haircuts_needed) {
 
     while (haircuts < haircuts_needed) {
         sem_take(state->change_waiting_room);
-        log_message("I am entering the waiting room");
-        //sem_take(state->
+        msgsnd(state->waiting_room, &my_id, sizeof(id_msg), 0);
+        sem_give(state->customers_ready);
+        log_message("%d I am entering the waiting room", getpid());
+        while (!invited);
+        log_message("%d I was invited by barber!", getpid());
+        sem_take(state->change_waiting_room);
+        sem_take(state->barber_ready);
+        sem_take(state->chair);
+        sem_give(state->chair);
     }
 }
 
@@ -35,6 +54,7 @@ void client (int haircuts_needed) {
 
 int main (int argc, char **argv) {
 
+    signal(SIGINT, use_sigint);
     if (argc < 3) {
         printf(COLOR_RED "%s: not enough arguments\n" COLOR_RESET
                "Usage: '%s <num_of_clients> <num_of_haircuts>'\n", argv[0], argv[0]);
@@ -46,20 +66,10 @@ int main (int argc, char **argv) {
     char *home_path = getenv("HOME");
     if (home_path == NULL) err("getenv");
 
-    int shmid = 
-        shmget(ftok(home_path, 0), sizeof(shared), 0);
+    int shmid = shmget(ftok(home_path, 0), sizeof(shared), 0);
     state = shmat(shmid, NULL, 0);
 
-
-    while(1) {
-        sem_take(state->change_waiting_room);
-        sem_take(state->barber_ready);
-        printf("i take your readiness\n");
-        sem_give(state->customers_ready);
-        sem_give(state->change_waiting_room);
-    }
-
-//    client(haircuts_needed);
+    client(haircuts_needed);
 
     return EXIT_SUCCESS;
 }

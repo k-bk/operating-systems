@@ -2,13 +2,13 @@ CC = gcc
 CFLAGS = -Wall
 LIBS = messages.o
 
-all: barber
+all: clean barber clients
 
-barber: $<.c $(LIBS)
-	$(CC) -o $< $^ $(CFLAGS)
+barber:  
+	$(CC) barber.c messages.c -o barber $(CFLAGS) 
 
-%.o: %.c
-	$(CC) -c $^ $(CFLAGS)
+clients:  
+	$(CC) clients.c messages.c -o clients $(CFLAGS) 
 
 clean: 
-	rm -rf *.o 
+	rm -rf *.o barber clients
