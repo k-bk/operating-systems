@@ -1,25 +1,22 @@
 #ifndef SHARED_BARBER
 #define SHARED_BARBER
 
-#define COLOR_RED     "\x1b[31m"
-#define COLOR_GREEN   "\x1b[32m"
-#define COLOR_YELLOW  "\x1b[33m"
-#define COLOR_BLUE    "\x1b[34m"
-#define COLOR_MAGENTA "\x1b[35m"
-#define COLOR_CYAN    "\x1b[36m"
-#define COLOR_RESET   "\x1b[0m"
+enum b_state { ASLEEP = 1, WORKING };
 
 typedef struct shared {
     int waiting_room; // fifo
-    int barber_ready;
+    int WR_places;    // free places in fifo
+    int change_WR;
+    int customers_waiting;
     int chair;
-    int customers_ready;
-    int change_waiting_room; 
+    enum b_state barber;
 } shared;
 
 typedef struct id_msg {
     long mtype;
     int pid;
 } id_msg;
+
+const size_t msg_size = sizeof(id_msg);
 
 #endif

@@ -15,7 +15,7 @@ union semun {
 void log_message (const char *message, ... ) {
     struct timespec time_stamp;
     clock_gettime(CLOCK_MONOTONIC, &time_stamp);
-    printf("%ld ", time_stamp.tv_nsec);
+    printf("%ld \t", time_stamp.tv_nsec);
 
     va_list arg;
     va_start(arg, message);
@@ -36,7 +36,10 @@ void sem_take (const int semid) {
     op.sem_num = 0;
     op.sem_flg = 0;
     if (semop(semid, &op, 1) == -1) {
-        if (errno == EIDRM) raise(SIGINT);
+        if (errno == EIDRM) {
+            perror("semop");
+            raise(SIGINT);
+        }
     }
 }
 
@@ -45,7 +48,12 @@ void sem_give (const int semid) {
     op.sem_op = 1;
     op.sem_num = 0;
     op.sem_flg = 0;
-    semop(semid, &op, 1);
+    if (semop(semid, &op, 1) == -1) {
+        if (errno == EIDRM) {
+            perror("semop");
+            raise(SIGINT);
+        }
+    }
 }
 
 void sem_set (const int semid, const int value) {
