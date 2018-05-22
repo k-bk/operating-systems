@@ -44,21 +44,22 @@ void barber () {
         sem_take(state->change_WR);
         if (sem_getval(state->customers_waiting) == 0) {
             if (state->barber != ASLEEP) 
-                log_message("I am falling asleep... zzz...");
+                log_message(C_YELLOW "\t I am falling asleep... zzz..." C_RESET);
             state->barber = ASLEEP;
             sem_give(state->change_WR);
         } else {
             sem_take(state->customers_waiting);
+            if (state->barber == ASLEEP) 
+                log_message(C_YELLOW "\t Woken up!" C_RESET);
             state->barber = WORKING;
-            log_message("Woken up!");
             msgrcv(state->waiting_room, &first_client, sizeof(id_msg), 0, 0);
             sem_give(state->change_WR);
             kill(first_client.pid, SIGUSR1);
-            log_message("%d\t Please, come here.", first_client.pid);
+            log_message("%d\t Come  here.", first_client.pid);
             sem_take(state->change_WR);
             sem_give(state->chair);
-            log_message("%d\t I am doing your haircut.", first_client.pid);
-            log_message("%d\t I have finished your haircut.", first_client.pid);
+            log_message("%d\t Start haircut.", first_client.pid);
+            log_message("%d\t Ended haircut.", first_client.pid);
             sem_give(state->change_WR);
         }
     }
