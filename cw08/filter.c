@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #define err(x) do { perror(x); exit(EXIT_FAILURE); } while(0)
 #define BUFSIZE 1000
@@ -10,6 +11,11 @@ typedef struct header {
     int height;
     int max_gray;
 }header;
+
+void clean_up ();
+char** str_split (char** buffer, int* n, const char* delim);
+void remove_comments (char* buffer, int bufsize);
+int read_header (char** buffer, header* head);
 
 void clean_up () 
 {
@@ -31,24 +37,32 @@ char** str_split (char** buffer, int* n, const char* delim)
     return a_split;
 }
 
-int is_comment (const char* line) 
-{
-    while (*line == ' ') line++;
-    return *line == '#';
-}
-
-int read_header (const char** buffer, header* head)
+void remove_comments (char* buffer, const int bufsize) 
 {
     int i = 0;
-    while (is_comment(buffer[i])) i++;
-    if (strcmp(buffer[i], "P2") != 0) return -1;
-    i++;
-    do {i++;} while (is_comment(buffer[i]));
-    head->width = atoi(buffer[i]);
-    do {i++;} while (is_comment(buffer[i]));
-    head->height = atoi(buffer[i]);
-    do {i++;} while (is_comment(buffer[i]));
-    head->max_gray = atoi(buffer[i]);
+    while (i < bufsize && buffer[i] != 0) {
+        if (buffer[i] == '#') {
+            while (buffer[i] != '\n' && buffer[i] != 0) {
+                buffer[i] = ' ';
+                i++;
+            }
+        }
+        if (buffer[i] == '\n') buffer[i] = ' ';
+        if (buffer[i] == '\r') buffer[i] = ' ';
+        i++;
+    }
+}
+
+int read_header (char** buffer, header* head)
+{
+    if (strncmp(buffer[0], "P2", 2) != 0) {
+        errno = EBADMSG;
+        return -1;
+    }
+    head->width = atoi(buffer[1]);
+    head->height = atoi(buffer[2]);
+    head->max_gray = atoi(buffer[3]);
+    return 0;
 }
 
 int main (const int argc, const char **argv) 
@@ -68,11 +82,12 @@ int main (const int argc, const char **argv)
     char* buffer = malloc(BUFSIZE);
     size_t rd = fread(buffer, 1, BUFSIZE, file_in);
     if (rd == 0) err("fread");
+    remove_comments(buffer, rd);
 
-    int num_of_lines;
-    char** tokens = str_split(&buffer, &num_of_lines, "\n");
+    int num_of_tokens;
+    char** tokens = str_split(&buffer, &num_of_tokens, " ");
     header file_header;
-    read_header(tokens, &file_header);
+    if (read_header(tokens, &file_header) == -1) err("read_header");
     free(tokens);
     free(buffer);
     exit(EXIT_SUCCESS);
