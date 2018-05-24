@@ -3,23 +3,52 @@
 #include <string.h>
 
 #define err(x) do { perror(x); exit(EXIT_FAILURE); } while(0)
-#define BUFSIZE 2000
+#define BUFSIZE 1000
+
+typedef struct header {
+    int width;
+    int height;
+    int max_gray;
+}header;
 
 void clean_up () 
 {
 }
 
-void str_split (char* buffer, char** a_split, int* n)
+char** str_split (char** buffer, int* n, const char* delim)
 {
-    a_split = malloc(BUFSIZE * sizeof(char*));
+    char** a_split = malloc(BUFSIZE * sizeof(char*));
     char* token;
     int i = 0;
-    while((token = strsep(&buffer, "\n")) != NULL) {
-        a_split[i] = token;
-        i++;
+    while((token = strsep(buffer, delim)) != NULL) {
+        if (strcmp(token, "") != 0) {
+            a_split[i] = token;
+            i++;
+        }
     }
     a_split = realloc(a_split, i * sizeof(char*));
     *n = i;
+    return a_split;
+}
+
+int is_comment (const char* line) 
+{
+    while (*line == ' ') line++;
+    return *line == '#';
+}
+
+int read_header (const char** buffer, header* head)
+{
+    int i = 0;
+    while (is_comment(buffer[i])) i++;
+    if (strcmp(buffer[i], "P2") != 0) return -1;
+    i++;
+    do {i++;} while (is_comment(buffer[i]));
+    head->width = atoi(buffer[i]);
+    do {i++;} while (is_comment(buffer[i]));
+    head->height = atoi(buffer[i]);
+    do {i++;} while (is_comment(buffer[i]));
+    head->max_gray = atoi(buffer[i]);
 }
 
 int main (const int argc, const char **argv) 
@@ -40,13 +69,11 @@ int main (const int argc, const char **argv)
     size_t rd = fread(buffer, 1, BUFSIZE, file_in);
     if (rd == 0) err("fread");
 
-    char** table = NULL;
-    int len;
-    str_split(buffer, table, &len);
-    for (int i = 0; i < len; i++) {
-        printf("%s\n", table[i]);
-    }
-
+    int num_of_lines;
+    char** tokens = str_split(&buffer, &num_of_lines, "\n");
+    header file_header;
+    read_header(tokens, &file_header);
+    free(tokens);
     free(buffer);
     exit(EXIT_SUCCESS);
 } 
