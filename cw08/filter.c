@@ -4,15 +4,17 @@
 #include <errno.h>
 #include <pthread.h>
 #include <math.h>
+#include <time.h>
+#include <sys/times.h>
 
 #define err(x) do { perror(x); exit(EXIT_FAILURE); } while(0)
 #define BUFSIZE 10000000
-#define FILTER_SIZE 1000
+#define FILTER_SIZE 100000
 
 int threads = 0;
 int mx_in [BUFSIZE];
 int mx_out [BUFSIZE];
-double mx_filter [1000];
+double mx_filter [FILTER_SIZE];
 
 typedef struct header {
     int width;
@@ -36,6 +38,10 @@ int read_matrix (char** tokens, int n, int* matrix);
 
 void clean_up () 
 {
+}
+
+double calculate_time(clock_t start, clock_t end) {
+    return (double) (end - start) / CLOCKS_PER_SEC;
 }
 
 char** str_split (char** buffer, int* n, const char* delim)
@@ -149,7 +155,6 @@ void apply_filter (int c, header head) {
 
 void* apply_filter_threads (void* wr_args) {
     wrapped* args = (wrapped*) wr_args;
-    printf("beg: %d end: %d\n", args->rbegin, args->rend);
     for (int x = args->rbegin; x < args->rend; x++) {
         for (int y = 0; y < args->head.height; y++) {
             mx_out[x + y * args->head.width] = 
@@ -173,23 +178,23 @@ int sqrt_int (int n)
     return i - 1;
 }
 
-void read_filter (const char* name, double* filter, int* c) {
+void read_filter (const char* name, int* c) {
     FILE* file_in = fopen(name, "r");
     if (file_in == NULL) 
         err("fopen");
-    char* buffer = (char*) malloc(1000);
-    size_t rd = fread(buffer, 1, 1000, file_in);
+    char* buffer = (char*) malloc(BUFSIZE);
+    size_t rd = fread(buffer, 1, BUFSIZE, file_in);
     fclose(file_in);
     if (rd == 0) 
         err("fread");
     int num_of_tokens;
     char** tokens = str_split(&buffer, &num_of_tokens, " ");
     for (int i = 0; i < num_of_tokens; i++) {
-        filter[i] = atof(tokens[i]);
+        mx_filter[i] = atof(tokens[i]);
     }
     free(buffer);
     free(tokens);
-    normalize(filter, num_of_tokens);
+    normalize(mx_filter, num_of_tokens);
     *c = sqrt_int(num_of_tokens);
 }
 
@@ -225,11 +230,15 @@ int main (const int argc, const char **argv)
         err("read_matrix");
 
     int c;
-    read_filter(name_filter, mx_filter, &c);
+    read_filter(name_filter, &c);
 
+    clock_t clk_start, clk_end;
+    struct tms start1, end1;
     // THREAD things
     pthread_t* a_threads = malloc(threads * sizeof(pthread_t));
     wrapped* tinfo = malloc(threads * sizeof(wrapped));
+    clk_start = clock();
+    times (&start1);
     for (int i = 0; i < threads; i++) {
         tinfo[i].c = c;
         tinfo[i].head = fhead;
@@ -250,9 +259,25 @@ int main (const int argc, const char **argv)
         if (pthread_join(a_threads[i], NULL) != 0) 
             err("pthread_join");
     }
+    clk_end = clock();
+    times (&end1);
+
     if (save_matrix(name_out, mx_out, fhead) == -1) 
         err("save_matrix");
 
+    printf ("threads: %d c: %d\n"
+        "real:  %f\t"
+		"utime: %f\t"
+		"stime: %f\n"
+		, threads
+        , c
+		, calculate_time (clk_start, clk_end)
+		, calculate_time (start1.tms_utime, end1.tms_utime)
+		, calculate_time (start1.tms_stime, end1.tms_utime)
+    );
+
+    free(a_threads);
+    free(tinfo);
     free(tokens);
     free(buffer);
     exit(EXIT_SUCCESS);
