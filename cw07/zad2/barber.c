@@ -14,6 +14,7 @@
 
 // ---------- Semaphores ---------------------------
 int shmid = 0;
+void *addr;
 shared *state;
 
 // ---------- Utilities ----------------------------
@@ -28,8 +29,13 @@ void use_sigint (int _) {
 }
 
 void clean_up () {
-    //msgctl(state->waiting_room, IPC_RMID, NULL);
-    shm_unlink(SHM_PATH);
+    msgctl(state->waiting_room, IPC_RMID, NULL);
+    sem_close(state->customers_waiting);
+    sem_close(state->change_WR);
+    sem_close(state->chair);
+    sem_close(state->WR_places);
+    if (munmap(addr, sizeof(shared)) == -1) perror("munmap");
+    if (shm_unlink(SHM_PATH) == -1) perror("shm_unlink");
 }
 
 // ---------- Semaphore loop -----------------------
@@ -78,14 +84,18 @@ int main (int argc, char **argv) {
     if (ftruncate(shmid, sizeof(shared)) < 0) 
         err("ftruncate");
 
-    /*
+    state = mmap(NULL, sizeof(shared), PROT_READ | PROT_WRITE, MAP_SHARED, shmid, 0);
     state->barber = WORKING; 
-    state->customers_waiting = sem_make_and_set(shmid, 0);
-    state->change_WR = sem_make_and_set(shmid, 1);
-    state->chair = sem_make_and_set(shmid, 0);
-    state->waiting_room = msgget(IPC_PRIVATE, IPC_CREAT | 0666);
-    state->WR_places = sem_make_and_set(shmid, atoi(argv[1]));
-    */
+    state->customers_waiting = 
+        sem_open(customers_waiting_path, O_RDWR | O_CREAT, 0666, 0);
+    state->change_WR =
+        sem_open(change_WR_path, O_RDWR | O_CREAT, 0666, 1);
+    state->chair =
+        sem_open(chair_path, O_RDWR | O_CREAT, 0666, 0);
+    state->waiting_room = 
+        msgget(IPC_PRIVATE, IPC_CREAT | 0666);
+    state->WR_places = 
+        sem_open(WR_places_path, O_RDWR | O_CREAT, 0666, atoi(argv[1]));
     atexit(clean_up);
 
     //barber();
