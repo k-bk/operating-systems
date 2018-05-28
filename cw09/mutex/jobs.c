@@ -45,8 +45,8 @@ int read_config (config_t* config)
     char* line;
     char* name;
     char* value;
+    // TODO - refactoring: move deleting comments to separate function
     while ((line = strsep((char**) &buffer, "\n")) != NULL) {
-        printf("line = %s\n", line);
         while (1) {
             name = strsep(&line, " \t");
             if (name == NULL) break;
@@ -57,7 +57,6 @@ int read_config (config_t* config)
             }
             else break;
         }
-        printf("    name = %s\n", name);
         while (1) {
             value = strsep(&line, " \t");
             if (value == NULL) break;
@@ -68,7 +67,6 @@ int read_config (config_t* config)
             }
             else break;
         }
-        printf("    value = %s\n", value);
         if (name && value) {
             if (value[0] == '#') continue;
             if (strcmp(name, "P") == 0) config->P = atoi(value);
@@ -103,18 +101,26 @@ int read_config (config_t* config)
     return EXIT_SUCCESS;
 }
 
+int test_config (config_t config) {
+    printf( "P = %d K = %d N = %d\n"
+            "fname = %s\n"
+            "L = %d\n"
+            "smode = %d pmode = %d\n"
+            "nk = %d\n"
+            , config.P, config.K, config.N, config.file_name
+            , config.L, config.search_mode, config.print_mode, config.nk);
+    return EXIT_SUCCESS;
+}
+
+void delete_config (config_t config) {
+    free(config.file_name);
+}
+
 int main (const int argc, const char **argv) 
 {
     config_t config;
-    read_config (&config);
-    printf( "P = %d\n"
-            "K = %d\n"
-            "N = %d\n"
-            "fname = %s\n"
-            "L = %d\n"
-            "smode = %d\n"
-            "pmode = %d\n"
-            "nk = %d\n"
-            , config.P, config.K, config.N, config.file_name, config.L, config.search_mode, config.print_mode, config.nk);
+    read_config(&config);
+    test_config(config);
+    delete_config(config);
     exit(EXIT_SUCCESS);
 } 
