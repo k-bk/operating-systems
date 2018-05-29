@@ -18,6 +18,7 @@
 #define FILTER_SIZE 100000
 
 int show_details = 0;
+FILE* source;
 
 enum smode_t { GT = 1, LT = -1, EQ = 0 };
 enum pmode_t { M_NORMAL, M_MINIMAL };
@@ -41,15 +42,11 @@ typedef struct array_t {
     int elems;
 } array_t;
 
-typedef struct producer_arg_t {
+typedef struct thread_arg_t {
+    pthread_t thread;
     config_t* config;
     array_t* array;
-} producer_arg_t;
-
-typedef struct consumer_arg_t {
-    config_t* config;
-    array_t* array;
-} consumer_arg_t;
+} thread_arg_t;
 
 void clean_up () 
 {
@@ -67,6 +64,19 @@ char* cmp_to_string (int cmp)
     if (cmp == EQ) return "EQ";
     if (cmp == LT) return "LT";
     return "GT";
+}
+
+char* read_line (FILE* fd)
+{
+    char line[500];
+    fgets(line, 500, fd);
+    int len = strlen(line);
+    if (len > 0 && line[len - 1] == '\n') {
+        line[len - 1] = 0;
+        return strdup(line);
+    } else {
+        return NULL;
+    }
 }
 
 // ------------ MUTEXES ----------------------------------------
@@ -114,7 +124,6 @@ int array_add (array_t* array, char* value)
 
 char* array_consume (array_t* array) 
 {
-
     pthread_mutex_lock(&array_consume_mutex);
     while (array_is_empty(array)) {
         pthread_cond_wait(&array_length, &array_consume_mutex);
@@ -156,22 +165,15 @@ void array_delete (array_t* array)
 
 int config_read (config_t* config)
 {
-    const int bufsize = 2000;
-    char* buffer = malloc(bufsize);
     const char* config_path = "config.ini";
 
     FILE* fconf = fopen(config_path, "r");
-    if (fread(buffer, 1, bufsize, fconf) == -1) {
-        fclose(fconf);
-        return EXIT_FAILURE;
-    }
-    fclose(fconf);
-
     char* line;
     char* name;
     char* value;
     // TODO - refactoring: move deleting comments to separate function
-    while ((line = strsep((char**) &buffer, "\n")) != NULL) {
+    while ((line = read_line(fconf)) != NULL) {
+        printf("line: %s\n", line);
         while (1) {
             name = strsep(&line, " \t");
             if (name == NULL) break;
@@ -219,8 +221,9 @@ int config_read (config_t* config)
             }
             if (strcmp(name, "nk") == 0) config->nk = atoi(value);
         }
+        //free(line);
     }
-    free(buffer);
+    fclose(fconf);
     return EXIT_SUCCESS;
 }
 
@@ -251,18 +254,16 @@ void* consumer (void* varg)
     time_t t_start;
     time_t t_act;
     char* string;
-    consumer_arg_t* arg = varg;
+    thread_arg_t* arg = varg;
     config_t* config = arg->config;
     array_t* array = arg->array;
     
-
     time(&t_start);
     do { 
         string = array_consume(array);
-        printf("Consumed: %s, %lu\n", string, strlen(string));
         int len = strlen(string);
         if (config->search_mode == cmp_int(len, config->L)) {
-            printf("String matches L\n");
+            printf(C_YELLOW "%lu" C_RESET "\t%s\n", arg->thread, string);
         }
         time(&t_act);
     } while (t_act - t_start < config->nk);
@@ -275,15 +276,16 @@ void* producer (void* varg)
 {
     time_t t_start;
     time_t t_act;
-    char* string;
-    producer_arg_t* arg = varg;
+    thread_arg_t* arg = varg;
     config_t* config = arg->config;
     array_t* array = arg->array;
+    char* line;
     
     time(&t_start);
     do { 
-
-        array_add(array, "Testowy string");
+        line = read_line(source);
+        array_add(array, line); 
+        free(line);
         time(&t_act);
     } while (t_act - t_start < config->nk);
     return NULL;
@@ -299,17 +301,24 @@ int main (const int argc, const char **argv)
     
     array_t array;
     array_create(&array, config.N);
-    array_add(&array, "super linia");
-    array_add(&array, "kolejna linijka");
-    array_add(&array, "kolejna linijka ta jest dluga");
-    array_add(&array, "kolejna linijka ta jest rowniez duga");
-    array_add(&array, "kolejna linijka =20.");
-    array_print(&array);
+    if ((source = fopen(config.file_name, "r")) == NULL) perror("fopen");
 
-    consumer_arg_t c_arg;
-    c_arg.config = &config;
-    c_arg.array = &array;
-    consumer(&c_arg);
+    thread_arg_t* threads = malloc(sizeof(thread_arg_t) * (config.P + config.K));
+
+    for (int i = 0; i < config.P; i++) {
+        threads[i].array = &array;
+        threads[i].config = &config;
+        pthread_create(&threads[i].thread, NULL, producer, &threads[i]);
+    }
+    for (int i = config.P; i < config.P + config.K; i++) {
+        threads[i].array = &array;
+        threads[i].config = &config;
+        pthread_create(&threads[i].thread, NULL, consumer, &threads[i]);
+    }
+
+    for (int i = 0; i < config.P + config.K; i++) {
+        pthread_join(threads[i].thread, NULL);
+    }
     config_delete(config);
     array_delete(&array);
     exit(EXIT_SUCCESS);
