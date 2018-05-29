@@ -3,6 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #define C_RED     "\x1b[31m"
 #define C_GREEN   "\x1b[32m"
@@ -18,7 +19,7 @@
 
 int show_details = 0;
 
-enum smode_t { GT = 1, LT, EQ };
+enum smode_t { GT = 1, LT = -1, EQ = 0 };
 enum pmode_t { M_NORMAL, M_MINIMAL };
 
 typedef struct config_t {
@@ -40,13 +41,44 @@ typedef struct array_t {
     int elems;
 } array_t;
 
+typedef struct producer_arg_t {
+    config_t* config;
+    array_t* array;
+} producer_arg_t;
+
+typedef struct consumer_arg_t {
+    config_t* config;
+    array_t* array;
+} consumer_arg_t;
+
 void clean_up () 
 {
 }
 
+int cmp_int (int l1, int l2) 
+{
+    if (l1 < l2) return -1;
+    if (l1 > l2) return 1;
+    return 0;
+}
+
+char* cmp_to_string (int cmp) 
+{
+    if (cmp == EQ) return "EQ";
+    if (cmp == LT) return "LT";
+    return "GT";
+}
+
+// ------------ MUTEXES ----------------------------------------
+
+pthread_mutex_t array_add_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t array_consume_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t array_length = PTHREAD_COND_INITIALIZER;
+
 // ------------ ARRAYS -----------------------------------------
 
-int array_create (array_t* array, int N) {
+int array_create (array_t* array, int N)
+{
     array->buffer = (char**) malloc(N * sizeof(char*));
     array->produce = 0;
     array->consume = 0;
@@ -55,42 +87,56 @@ int array_create (array_t* array, int N) {
     return EXIT_SUCCESS;
 }
 
+int array_is_full (array_t* array) 
+{
+    return array->elems >= array->N;
+}
+
+int array_is_empty (array_t* array) 
+{
+    return array->elems <= 0;
+}
+
 int array_add (array_t* array, char* value) 
 {
+    pthread_mutex_lock(&array_add_mutex);
+    while (array_is_full(array)) {
+        pthread_cond_wait(&array_length, &array_add_mutex);
+    }
     array->buffer[array->produce] = strdup(value);
     array->produce++;
     array->produce %= array->N;
     array->elems++;
+    pthread_cond_broadcast(&array_length);
+    pthread_mutex_unlock(&array_add_mutex);
     return EXIT_SUCCESS;
-}
-
-int array_is_full (array_t array) 
-{
-    return array.elems == array.N;
 }
 
 char* array_consume (array_t* array) 
 {
-    if (array->elems <= 0) {
-        return NULL;
-    }
 
+    pthread_mutex_lock(&array_consume_mutex);
+    while (array_is_empty(array)) {
+        pthread_cond_wait(&array_length, &array_consume_mutex);
+    }
     char* value = strdup(array->buffer[array->consume]);
     free(array->buffer[array->consume]);
     array->buffer[array->consume] = NULL;
     array->consume++;
     array->consume %= array->N;
     array->elems--;
+    pthread_cond_broadcast(&array_length);
+    pthread_mutex_unlock(&array_consume_mutex);
     return value;
 }
 
-void array_print (array_t array) 
+void array_print (array_t* array) 
 {
     printf("---\n");
-    for (int i = 0; i < array.N; i++) {
-        if (array.buffer[i] != NULL) {
-            printf(C_YELLOW "[%d]" C_RESET "\t%s\n", i, array.buffer[i]);
-        } else if (i+1 < array.N && array.buffer[i+1] != NULL) {
+    for (int i = 0; i < array->N; i++) {
+        if (array->buffer[i] != NULL) {
+            printf(C_YELLOW "[%d]" C_RESET "\t%s\n", i, array->buffer[i]);
+        } else if (i+1 < array->N && array->buffer[i+1] != NULL) {
             printf("\t...\n");
         }
     }
@@ -152,15 +198,13 @@ int config_read (config_t* config)
             if (strcmp(name, "K") == 0) config->K = atoi(value);
             if (strcmp(name, "N") == 0) config->N = atoi(value);
             if (strcmp(name, "file_name") == 0) {
-                int slen = strlen(value);
-                config->file_name = malloc(slen);
-                strcpy(config->file_name, value);
+                config->file_name = strdup(value);
             }
             if (strcmp(name, "L") == 0) config->L = atoi(value);
             if (strcmp(name, "search_mode") == 0) {
-                if (strcmp(value, "GT") == 0) {
+                if (strcasecmp(value, "GT") == 0) {
                     config->search_mode = GT;
-                } else if (strcmp(value, "LT") == 0) {
+                } else if (strcasecmp(value, "LT") == 0) {
                     config->search_mode = LT;
                 } else {
                     config->search_mode = EQ;
@@ -187,16 +231,62 @@ int config_test (config_t config)
             "P = %d K = %d N = %d\n"
             "fname = %s\n"
             "L = %d\n"
-            "smode = %d pmode = %d\n"
+            "smode = %s pmode = %d\n"
             "nk = %d\n"
             , config.P, config.K, config.N, config.file_name
-            , config.L, config.search_mode, config.print_mode, config.nk);
+            , config.L, cmp_to_string(config.search_mode), config.print_mode
+            , config.nk);
     return EXIT_SUCCESS;
 }
 
 void config_delete (config_t config) 
 {
     free(config.file_name);
+}
+
+// ------------ CONSUMENT --------------------------------------
+
+void* consumer (void* varg)
+{
+    time_t t_start;
+    time_t t_act;
+    char* string;
+    consumer_arg_t* arg = varg;
+    config_t* config = arg->config;
+    array_t* array = arg->array;
+    
+
+    time(&t_start);
+    do { 
+        string = array_consume(array);
+        printf("Consumed: %s, %lu\n", string, strlen(string));
+        int len = strlen(string);
+        if (config->search_mode == cmp_int(len, config->L)) {
+            printf("String matches L\n");
+        }
+        time(&t_act);
+    } while (t_act - t_start < config->nk);
+    return NULL;
+}
+
+// ------------ PRODUCER ---------------------------------------
+//
+void* producer (void* varg)
+{
+    time_t t_start;
+    time_t t_act;
+    char* string;
+    producer_arg_t* arg = varg;
+    config_t* config = arg->config;
+    array_t* array = arg->array;
+    
+    time(&t_start);
+    do { 
+
+        array_add(array, "Testowy string");
+        time(&t_act);
+    } while (t_act - t_start < config->nk);
+    return NULL;
 }
 
 // ------------ MAIN -------------------------------------------
@@ -211,7 +301,15 @@ int main (const int argc, const char **argv)
     array_create(&array, config.N);
     array_add(&array, "super linia");
     array_add(&array, "kolejna linijka");
+    array_add(&array, "kolejna linijka ta jest dluga");
+    array_add(&array, "kolejna linijka ta jest rowniez duga");
+    array_add(&array, "kolejna linijka =20.");
+    array_print(&array);
 
+    consumer_arg_t c_arg;
+    c_arg.config = &config;
+    c_arg.array = &array;
+    consumer(&c_arg);
     config_delete(config);
     array_delete(&array);
     exit(EXIT_SUCCESS);
