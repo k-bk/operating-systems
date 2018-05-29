@@ -52,14 +52,14 @@ void clean_up ()
 {
 }
 
-int cmp_int (int l1, int l2) 
+int cmp_int (const int l1, const int l2) 
 {
     if (l1 < l2) return -1;
     if (l1 > l2) return 1;
     return 0;
 }
 
-char* cmp_to_string (int cmp) 
+char* cmp_to_string (const int cmp) 
 {
     if (cmp == EQ) return "EQ";
     if (cmp == LT) return "LT";
@@ -97,12 +97,12 @@ int array_create (array_t* array, int N)
     return EXIT_SUCCESS;
 }
 
-int array_is_full (array_t* array) 
+int array_is_full (const array_t* array) 
 {
     return array->elems >= array->N;
 }
 
-int array_is_empty (array_t* array) 
+int array_is_empty (const array_t* array) 
 {
     return array->elems <= 0;
 }
@@ -139,7 +139,7 @@ char* array_consume (array_t* array)
     return value;
 }
 
-void array_print (array_t* array) 
+void array_print (const array_t* array) 
 {
     printf("---\n");
     for (int i = 0; i < array->N; i++) {
@@ -227,7 +227,7 @@ int config_read (config_t* config)
     return EXIT_SUCCESS;
 }
 
-int config_test (config_t config) 
+int config_test (const config_t config) 
 {
     printf( "---\n"
             "config.ini\n"
@@ -251,14 +251,12 @@ void config_delete (config_t config)
 
 void* consumer (void* varg)
 {
-    time_t t_start;
     time_t t_act;
     char* string;
-    thread_arg_t* arg = varg;
+    const time_t t_start = time(NULL);
+    const thread_arg_t* arg = varg;
     config_t* config = arg->config;
     array_t* array = arg->array;
-    
-    time(&t_start);
     do { 
         string = array_consume(array);
         int len = strlen(string);
@@ -274,14 +272,12 @@ void* consumer (void* varg)
 //
 void* producer (void* varg)
 {
-    time_t t_start;
     time_t t_act;
-    thread_arg_t* arg = varg;
+    const time_t t_start = time(NULL);
+    const thread_arg_t* arg = varg;
     config_t* config = arg->config;
     array_t* array = arg->array;
     char* line;
-    
-    time(&t_start);
     do { 
         line = read_line(source);
         array_add(array, line); 
