@@ -28,7 +28,7 @@ char* config_read_line (FILE* fd)
 
 int config_read (config_t* config)
 {
-    const char* config_path = "config.ini";
+    const char* config_path = "../config.ini";
 
     FILE* fconf = fopen(config_path, "r");
     char* line;

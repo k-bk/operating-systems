@@ -4,9 +4,10 @@
 #include <errno.h>
 #include <pthread.h>
 #include <unistd.h>
-#include "arrays.h"
-#include "colors.h"
-#include "cfgparser.h"
+#include <semaphore.h>
+#include "../arrays.h"
+#include "../colors.h"
+#include "../cfgparser.h"
 
 #define err(x) do { perror(x); exit(EXIT_FAILURE); } while(0)
 
@@ -40,11 +41,22 @@ char* read_line (FILE* fd)
     }
 }
 
-// ------------ MUTEXES ----------------------------------------
+// ------------ SEMAPHORES -------------------------------------
 
-pthread_mutex_t array_add_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t array_consume_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t array_length = PTHREAD_COND_INITIALIZER;
+sem_t* array_add_mutex;
+sem_t* array_consume_mutex;
+sem_t* array_length;
+
+int semaphores_init ()
+{
+    array_add_mutex = malloc(sizeof(sem_t));
+    array_consume_mutex = malloc(sizeof(sem_t));
+    array_length = malloc(sizeof(sem_t));
+    if (sem_init(array_add_mutex, 0, 1) < 0) return -1;
+    if (sem_init(array_consume_mutex, 0, 1) < 0) return -1;
+    if (sem_init(array_length, 0, 0) < 0) return -1;
+    return 0;
+}
 
 // ------------ CONSUMENT --------------------------------------
 
@@ -55,18 +67,18 @@ void* consumer (void* varg)
     config_t* config = arg->config;
     array_t* array = arg->array;
     do { 
-        pthread_mutex_lock(&array_consume_mutex);
+        sem_wait(array_consume_mutex);
         while (array_is_empty(array)) {
             if (producer_waiting_for_exit) {
                 consuments_exited++;
-                pthread_mutex_unlock(&array_consume_mutex);
+                sem_post(array_consume_mutex);
                 goto cons_exit;
             }
-            pthread_cond_wait(&array_length, &array_consume_mutex);
+            sem_wait(array_length);
         }
         string = array_consume(array);
-        pthread_mutex_unlock(&array_consume_mutex);
-        pthread_cond_signal(&array_length);
+        sem_post(array_consume_mutex);
+        sem_post(array_length);
         int len = strlen(string);
         if (config->search_mode == cmp_int(len, config->L)) {
             printf(C_YELLOW "%lu" C_RESET "\t%s\n", arg->thread, string);
@@ -92,13 +104,13 @@ void* producer (void* varg)
     while (1) { 
         line = read_line(source);
         if (line == NULL) break;
-        pthread_mutex_lock(&array_add_mutex);
+        sem_wait(array_add_mutex);
         while (array_is_full(array)) {
-            pthread_cond_wait(&array_length, &array_add_mutex);
+            sem_wait(array_length);
         }
         array_add(array, line); 
-        pthread_mutex_unlock(&array_add_mutex);
-        pthread_cond_signal(&array_length);
+        sem_post(array_add_mutex);
+        sem_post(array_length);
         free(line);
         time(&t_act);
         if (config->nk > 0 && t_act - t_start < config->nk) break;
@@ -107,7 +119,7 @@ void* producer (void* varg)
     if (!producer_waiting_for_exit) {
         producer_waiting_for_exit = 1;
         while (consuments_exited < config->K) {
-            pthread_cond_broadcast(&array_length);
+            sem_post(array_length);
         }
     }
 
@@ -118,6 +130,7 @@ void* producer (void* varg)
 
 int main (const int argc, const char **argv) 
 {
+    if (semaphores_init() < 0) err("semaphores_init");
     config_t config;
     config_read(&config);
     config_test(config);

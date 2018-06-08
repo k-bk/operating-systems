@@ -4,9 +4,9 @@
 #include <errno.h>
 #include <pthread.h>
 #include <unistd.h>
-#include "arrays.h"
-#include "colors.h"
-#include "cfgparser.h"
+#include "../arrays.h"
+#include "../colors.h"
+#include "../cfgparser.h"
 
 #define err(x) do { perror(x); exit(EXIT_FAILURE); } while(0)
 
@@ -74,6 +74,7 @@ void* consumer (void* varg)
     } while (1);
 
 cons_exit:
+
     return NULL;
 }
 
