@@ -1,18 +1,16 @@
 CC = gcc
 CFLAGS = -Wall 
 DEPS = -lpthread
-LIBS = arrays cfgparser
+LIBS = arrays.o cfgparser.o
 
 all: jobs
 
 jobs: jobs.c $(LIBS) 
-	$(CC) jobs.c -l $(LIBS) -L ./ -o jobs $(CFLAGS) $(DEPS)
+	$(CC) -o jobs jobs.c $(LIBS) $(CFLAGS) $(DEPS)
 arrays.o: arrays.c
-	$(CC) arrays.c $(CFLAGS)
-	ar rcs arrays.a arrays.o
+	$(CC) -c arrays.c $(CFLAGS)
 cfgparser.o: cfgparser.c
-	$(CC) cfgparser.c $(CFLAGS)
-	ar rcs cfgparser.a cfgparser.o
+	$(CC) -c cfgparser.c $(CFLAGS)
 
 
 tests: jobs

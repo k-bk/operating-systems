@@ -10,7 +10,6 @@
 
 #define err(x) do { perror(x); exit(EXIT_FAILURE); } while(0)
 
-int show_details = 0;
 FILE* source;
 
 typedef struct thread_arg_t {
@@ -18,10 +17,6 @@ typedef struct thread_arg_t {
     config_t* config;
     array_t* array;
 } thread_arg_t;
-
-void clean_up () 
-{
-}
 
 int cmp_int (const int l1, const int l2) 
 {
@@ -32,8 +27,8 @@ int cmp_int (const int l1, const int l2)
 
 char* read_line (FILE* fd)
 {
-    char line[500];
-    fgets(line, 500, fd);
+    char line[1000];
+    fgets(line, 1000, fd);
     int len = strlen(line);
     if (len > 0 && line[len - 1] == '\n') {
         line[len - 1] = 0;
@@ -48,14 +43,13 @@ char* read_line (FILE* fd)
 pthread_mutex_t array_add_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t array_consume_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t array_length = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t consument_exit_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // ------------ CONSUMENT --------------------------------------
 
 void* consumer (void* varg)
 {
-    time_t t_act;
     char* string;
-    const time_t t_start = time(NULL);
     const thread_arg_t* arg = varg;
     config_t* config = arg->config;
     array_t* array = arg->array;
@@ -65,19 +59,21 @@ void* consumer (void* varg)
             pthread_cond_wait(&array_length, &array_consume_mutex);
         }
         string = array_consume(array);
-        pthread_cond_broadcast(&array_length);
         pthread_mutex_unlock(&array_consume_mutex);
+        pthread_cond_broadcast(&array_length);
         int len = strlen(string);
         if (config->search_mode == cmp_int(len, config->L)) {
             printf(C_YELLOW "%lu" C_RESET "\t%s\n", arg->thread, string);
         }
-        time(&t_act);
-    } while (t_act - t_start < config->nk);
+    } while (1);
+    pthread_mutex_lock(&consument_exit_mutex);
+
+    pthread_mutex_unlock(&consument_exit_mutex);
     return NULL;
 }
 
 // ------------ PRODUCER ---------------------------------------
-//
+
 void* producer (void* varg)
 {
     time_t t_act;
@@ -85,19 +81,21 @@ void* producer (void* varg)
     const thread_arg_t* arg = varg;
     config_t* config = arg->config;
     array_t* array = arg->array;
+
     char* line;
     do { 
         line = read_line(source);
+	if (line == NULL) break;
         pthread_mutex_lock(&array_add_mutex);
         while (array_is_full(array)) {
             pthread_cond_wait(&array_length, &array_add_mutex);
         }
         array_add(array, line); 
-        pthread_cond_broadcast(&array_length);
         pthread_mutex_unlock(&array_add_mutex);
+        pthread_cond_broadcast(&array_length);
         free(line);
         time(&t_act);
-    } while (t_act - t_start < config->nk);
+    } while (config->nk > 0 && t_act - t_start < config->nk);
     return NULL;
 }
 
@@ -111,7 +109,7 @@ int main (const int argc, const char **argv)
     
     array_t array;
     array_create(&array, config.N);
-    if ((source = fopen(config.file_name, "r")) == NULL) perror("fopen");
+    if ((source = fopen(config.file_name, "r")) == NULL) err("fopen");
 
     thread_arg_t* threads = malloc(sizeof(thread_arg_t) * (config.P + config.K));
 
