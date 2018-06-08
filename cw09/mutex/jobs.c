@@ -10,6 +10,8 @@
 
 #define err(x) do { perror(x); exit(EXIT_FAILURE); } while(0)
 
+int producer_waiting_for_exit = 0; 
+int consuments_exited = 0;
 FILE* source;
 
 typedef struct thread_arg_t {
@@ -43,7 +45,6 @@ char* read_line (FILE* fd)
 pthread_mutex_t array_add_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t array_consume_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t array_length = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t consument_exit_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // ------------ CONSUMENT --------------------------------------
 
@@ -56,19 +57,23 @@ void* consumer (void* varg)
     do { 
         pthread_mutex_lock(&array_consume_mutex);
         while (array_is_empty(array)) {
+            if (producer_waiting_for_exit) {
+                consuments_exited++;
+                pthread_mutex_unlock(&array_consume_mutex);
+                goto cons_exit;
+            }
             pthread_cond_wait(&array_length, &array_consume_mutex);
         }
         string = array_consume(array);
         pthread_mutex_unlock(&array_consume_mutex);
-        pthread_cond_broadcast(&array_length);
+        pthread_cond_signal(&array_length);
         int len = strlen(string);
         if (config->search_mode == cmp_int(len, config->L)) {
             printf(C_YELLOW "%lu" C_RESET "\t%s\n", arg->thread, string);
         }
     } while (1);
-    pthread_mutex_lock(&consument_exit_mutex);
 
-    pthread_mutex_unlock(&consument_exit_mutex);
+cons_exit:
     return NULL;
 }
 
@@ -83,19 +88,28 @@ void* producer (void* varg)
     array_t* array = arg->array;
 
     char* line;
-    do { 
+    while (1) { 
         line = read_line(source);
-	if (line == NULL) break;
+        if (line == NULL) break;
         pthread_mutex_lock(&array_add_mutex);
         while (array_is_full(array)) {
             pthread_cond_wait(&array_length, &array_add_mutex);
         }
         array_add(array, line); 
         pthread_mutex_unlock(&array_add_mutex);
-        pthread_cond_broadcast(&array_length);
+        pthread_cond_signal(&array_length);
         free(line);
         time(&t_act);
-    } while (config->nk > 0 && t_act - t_start < config->nk);
+        if (config->nk > 0 && t_act - t_start < config->nk) break;
+    }
+
+    if (!producer_waiting_for_exit) {
+        producer_waiting_for_exit = 1;
+        while (consuments_exited < config->K) {
+            pthread_cond_broadcast(&array_length);
+        }
+    }
+
     return NULL;
 }
 
