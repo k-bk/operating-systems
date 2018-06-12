@@ -13,7 +13,7 @@ char* cmp_to_string (const int cmp)
     return "GT";
 }
 
-char* read_line (FILE* fd)
+char* config_read_line (FILE* fd)
 {
     char line[500];
     fgets(line, 500, fd);
@@ -28,14 +28,14 @@ char* read_line (FILE* fd)
 
 int config_read (config_t* config)
 {
-    const char* config_path = "config.ini";
+    const char* config_path = "../config.ini";
 
     FILE* fconf = fopen(config_path, "r");
     char* line;
     char* name;
     char* value;
     // TODO - refactoring: move deleting comments to separate function
-    while ((line = read_line(fconf)) != NULL) {
+    while ((line = config_read_line(fconf)) != NULL) {
         printf("line: %s\n", line);
         while (1) {
             name = strsep(&line, " \t");

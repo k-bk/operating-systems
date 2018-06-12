@@ -9,21 +9,21 @@
 int array_create (array_t* array, const int N)
 {
     array->buffer = (char**) malloc(N * sizeof(char*));
+    for (int i = 0; i < N; i++) array->buffer[i] = NULL;
     array->produce = 0;
     array->consume = 0;
-    array->elems = 0;
     array->N = N;
     return EXIT_SUCCESS;
 }
 
 int array_is_full (const array_t* array) 
 {
-    return array->elems >= array->N;
+    return array->buffer[array->produce] != NULL; 
 }
 
 int array_is_empty (const array_t* array) 
 {
-    return array->elems <= 0;
+    return array->buffer[array->consume] == NULL; 
 }
 
 int array_add (array_t* array, const char* value) 
@@ -31,7 +31,6 @@ int array_add (array_t* array, const char* value)
     array->buffer[array->produce] = strdup(value);
     array->produce++;
     array->produce %= array->N;
-    array->elems++;
     return EXIT_SUCCESS;
 }
 
@@ -42,7 +41,6 @@ char* array_consume (array_t* array)
     array->buffer[array->consume] = NULL;
     array->consume++;
     array->consume %= array->N;
-    array->elems--;
     return value;
 }
 
