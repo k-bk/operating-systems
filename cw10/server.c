@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include "colors.h"
+#include "communicate.h"
 
 #define err(msg) do { perror(msg); exit(EXIT_SUCCESS); } while (0);
 
@@ -29,7 +30,7 @@ int main (const int argc, const char** argv)
 {
     if (argc < 3) {
         printf(C_RED "Usage:" C_RESET " %s <port_number> <socket_path>\n", argv[0]);
-        exit(EXIT_SUCCESS);
+        exit(EXIT_FAILURE);
     }
     atexit(clean_up);
     signal(SIGINT, use_SIGINT);
@@ -54,16 +55,15 @@ int main (const int argc, const char** argv)
         err("listen");
     }
 
+    socklen_t clilen = (socklen_t) sizeof(cli_addr);
+    printf("Waiting for clients...\n");
+
     while (1) {
-        printf("Waiting for clients...\n");
-        socklen_t clilen = (socklen_t) sizeof(cli_addr);
         int newsockfd = accept(sockfd, (struct sockaddr*) &cli_addr, &clilen);
         if (newsockfd < 0) {
-            close(sockfd);
             err("accept client");
         }
         printf("Connection accepted.\n");
-
         message = "Hello Client, I have got a connection with you.\n";
         write(newsockfd, message, strlen(message));
     }
