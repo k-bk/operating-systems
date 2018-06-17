@@ -8,7 +8,7 @@
 #include "colors.h"
 #include "communicate.h"
 
-#define err(__msg) do { perror(__msg); exit(EXIT_SUCCESS); } while (0);
+#define err(msg) do { perror(msg); exit(EXIT_SUCCESS); } while (0);
 
 enum method_t { NET = 1, UNIX = 2};
 
@@ -29,13 +29,25 @@ int main (const int argc, const char** argv)
     const char* name = read_name(argv[1]); 
     const enum method_t connection_method = read_connection_method(argv[2]);
     const int sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    struct sockaddr_un cli_addr;
+    socklen_t clilen = sizeof(cli_addr);
     task_t task;
+
+    cli_addr.sun_family = SOCK_STREAM;
+    strcpy(cli_addr.sun_path, argv[3]);
+    connect(sockfd, (struct sockaddr*) &cli_addr, clilen);
 
     while (1) {
         recv(sockfd, &task, sizeof(task_t), 0);
-        printf("Received: op %d arg1 %f arg2 %f\n", task.op, task.arg1, task.arg2);
-        compute_task(&task);
-        send(sockfd, &task, sizeof(task), 0);
+        printf("Received" C_YELLOW "[%d]" C_RESET
+                ": %s %f %f\n", task.id, task.op, task.arg1, task.arg2);
+        if (compute_task(&task) == -1) {
+            printf(C_RED "Error" C_RESET
+                    ": bad task format.\n");
+        }
+        printf("Computation " C_YELLOW "[%d]" C_RESET
+                ": %f\n", task.id, task.arg1);
+        //send(sockfd, &task, sizeof(task), 0);
     }
 
     exit(EXIT_SUCCESS);
@@ -43,11 +55,13 @@ int main (const int argc, const char** argv)
 
 int compute_task (task_t* task)
 {
-    if (strcasecmp(task->op, "ADD")) task->arg1 += task->arg2;
-    if (strcasecmp(task->op, "SUB")) task->arg1 -= task->arg2;
-    if (strcasecmp(task->op, "MUL")) task->arg1 *= task->arg2;
-    if (strcasecmp(task->op, "DIV")) task->arg1 /= task->arg2;
+    if (strcasecmp(task->op, "ADD") == 0) task->arg1 += task->arg2;
+    else if (strcasecmp(task->op, "SUB") == 0) task->arg1 -= task->arg2;
+    else if (strcasecmp(task->op, "MUL") == 0) task->arg1 *= task->arg2;
+    else if (strcasecmp(task->op, "DIV") == 0) task->arg1 /= task->arg2;
+    else return -1;
     task->arg2 = 0;
+    return 0;
 }
 
 int connect_client (const int sockfd, const char* path)
