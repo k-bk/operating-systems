@@ -5,8 +5,8 @@
 
 typedef struct task_t {
     int id;
-    char client_name [MAX_CLIENT_NAME + 1];
-    char op [4]; 
+    char from [MAX_CLIENT_NAME + 1];
+    char op [10]; 
     double arg1;
     double arg2;
 } task_t;

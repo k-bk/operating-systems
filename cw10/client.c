@@ -10,14 +10,19 @@
 
 #define err(msg) do { perror(msg); exit(EXIT_SUCCESS); } while (0);
 
-enum method_t { NET = 1, UNIX = 2};
+enum method_t { 
+    NET = 1, 
+    UNIX = 2
+};
 
-void                try_add_client          (const int sockfd, const char* path);
-void                print_usage             (const char* name);
-const char*         read_name               (const char* arg);
-enum method_t       read_connection_method  (const char* arg);
-int                 compute_task            (task_t* task);
-void                use_SIGINT              (int _);
+void            try_add_client          (const int sockfd, const char* path);
+void            print_usage             (const char* name);
+const char*     read_name               (const char* arg);
+enum method_t   read_connection_method  (const char* arg);
+int             compute_task            (const task_t* task, task_t* result);
+void            use_SIGINT              (int _);
+
+int deregister = 0;
 
 int main (const int argc, const char** argv)
 {
@@ -25,42 +30,62 @@ int main (const int argc, const char** argv)
         print_usage(argv[0]);
         exit(EXIT_SUCCESS);
     }
+    signal(SIGINT, use_SIGINT);
 
     const char* name = read_name(argv[1]); 
     const enum method_t connection_method = read_connection_method(argv[2]);
     const int sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
     struct sockaddr_un cli_addr;
     socklen_t clilen = sizeof(cli_addr);
-    task_t task;
+    task_t recv_task;
+    task_t send_task;
 
+    strcpy(send_task.from, name);
     cli_addr.sun_family = SOCK_STREAM;
     strcpy(cli_addr.sun_path, argv[3]);
     connect(sockfd, (struct sockaddr*) &cli_addr, clilen);
 
     while (1) {
-        recv(sockfd, &task, sizeof(task_t), 0);
-        printf("Received" C_YELLOW "[%d]" C_RESET
-                ": %s %f %f\n", task.id, task.op, task.arg1, task.arg2);
-        if (compute_task(&task) == -1) {
-            printf(C_RED "Error" C_RESET
-                    ": bad task format.\n");
+
+        if (deregister) {
+            printf(C_YELLOW "Interrupted." C_RESET " Ending...\n");
+            strcpy(send_task.op, "end");
+            send(sockfd, &send_task, sizeof(task_t), 0);
+            exit(EXIT_SUCCESS);
         }
-        printf("Computation " C_YELLOW "[%d]" C_RESET
-                ": %f\n", task.id, task.arg1);
-        //send(sockfd, &task, sizeof(task), 0);
+
+        recv(sockfd, &recv_task, sizeof(task_t), 0);
+        if (strcmp(recv_task.op, "ping") == 0) {
+            strcpy(send_task.op, "pong");
+            send(sockfd, &send_task, sizeof(task_t), 0);
+        } else {
+            printf("Received" C_YELLOW "[%d]" C_RESET
+                    ": %s %f %f\n", recv_task.id, recv_task.op, recv_task.arg1, recv_task.arg2);
+            int status = compute_task(&recv_task, &send_task);
+            if (status == -1) {
+                printf(C_RED "Error" C_RESET
+                        ": bad task format.\n");
+            } else {
+                printf("Computation " C_YELLOW "[%d]" C_RESET
+                        ": %f\n", send_task.id, send_task.arg1);
+                send(sockfd, &send_task, sizeof(task_t), 0);
+            }
+        }
     }
 
     exit(EXIT_SUCCESS);
 }
 
-int compute_task (task_t* task)
+int compute_task (const task_t* task, task_t* result)
 {
-    if (strcasecmp(task->op, "ADD") == 0) task->arg1 += task->arg2;
-    else if (strcasecmp(task->op, "SUB") == 0) task->arg1 -= task->arg2;
-    else if (strcasecmp(task->op, "MUL") == 0) task->arg1 *= task->arg2;
-    else if (strcasecmp(task->op, "DIV") == 0) task->arg1 /= task->arg2;
+    if (strcasecmp(task->op, "ADD") == 0) result->arg1 = task->arg1 + task->arg2;
+    else if (strcasecmp(task->op, "SUB") == 0) result->arg1 = task->arg1 - task->arg2;
+    else if (strcasecmp(task->op, "MUL") == 0) result->arg1 = task->arg1 * task->arg2; 
+    else if (strcasecmp(task->op, "DIV") == 0) result->arg1 = task->arg1 / task->arg2;
     else return -1;
-    task->arg2 = 0;
+    strcpy(result->op, "EQ");
+    result->arg2 = 0;
+    result->id = task->id;
     return 0;
 }
 
@@ -78,8 +103,7 @@ int connect_client (const int sockfd, const char* path)
 
 void use_SIGINT (int _)
 {
-    printf(C_YELLOW "Interrupted." C_RESET " Closing...\n");
-    exit(EXIT_SUCCESS);
+    deregister = 1;
 }
 
 // ----------------- CONSOLE INPUT HANDLING ----------------------------------------
